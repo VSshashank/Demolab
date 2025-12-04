@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TempView - TMP36 Temperature Sensor Guide</title>
+
+    <!-- Fonts: Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/3.0.0/simplex-noise.min.js"></script>
+    <!-- Confetti Library for Quiz Rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    
+    <!-- Prism.js for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="lcd_style.css">
+
+    <!-- Fix for Input Interactivity & Quiz Styling -->
+    <style>
+        /* Ensure background canvases don't block interaction */
+        #background-blobs, 
+        #annotation-canvas, 
+        #hero-constellation,
+        .confetti-canvas,
+        .card-particles {
+            pointer-events: none;
+        }
+        
+        /* Quiz Styling */
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+            position: relative;
+            z-index: 50; /* Ensure clickable */
+        }
+
+        .quiz-btn {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .quiz-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-color);
+        }
+
+        .quiz-btn.correct {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: #4CAF50;
+            color: #81C784;
+        }
+
+        .quiz-btn.incorrect {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: #F44336;
+            color: #E57373;
+        }
+
+        /* Ensure other inputs are interactive */
+        textarea#code-answer,
+        .preset-btn,
+        .copy-code-btn,
+        summary {
+            position: relative;
+            z-index: 50;
+            pointer-events: auto;
+        }
+
+        body.presentation-mode #annotation-canvas {
+            pointer-events: auto;
+        }
+    </style>
+
+    <!-- SEO & Meta Tags -->
+    <meta name="description" content="Interactive TMP36 temperature sensor tutorial with real-time voltage calculations and hands-on exercises. Perfect for Arduino projects and STEM education.">
+    <meta name="keywords" content="TMP36, temperature sensor, Arduino, analog sensor, STEM, education, interactive tutorial">
+</head>
+<body>
+
+    <!-- Page Loader -->
+    <div id="page-loader">
+        <div class="loader-spinner"></div>
+    </div>
+    
+    <!-- Background Animations -->
+    <canvas id="background-blobs"></canvas>
+    
+    <!-- Achievement Toast -->
+    <div id="achievement-toast">
+        <div id="achievement-icon">🏆</div>
+        <div>
+            <div id="achievement-title">Achievement Unlocked!</div>
+            <div id="achievement-desc">You're a Temperature Master!</div>
+        </div>
+    </div>
+    
+    <!-- Presentation Tools -->
+    <canvas id="annotation-canvas"></canvas>
+    <div id="laser-spotlight"></div>
+    <div id="perf-monitor"></div>
+    <div id="shortcuts-overlay"></div>
+
+    <!-- Navigation -->
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="logo" href="#">TempView</a>
+        <nav class="nav">
+          <a href="#demo-section">Demo</a>
+          <a href="#how-it-works-section">How it works</a>
+          <a href="#specifications-section">Specs</a>
+          <a href="#exercises-section">Exercises</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <header id="hero">
+        <canvas id="hero-constellation"></canvas>
+        
+        <div class="hero-inner container">
+          <div class="hero-copy">
+            <h1 id="hero-title">Analog precision, made simple.</h1>
+            <p>Interactive TMP36 guide, visual explanations and exercises — perfect for Arduino projects and STEM education.</p>
+            <div class="hero-cta">
+              <a href="#demo-section" class="btn primary">Try the demo</a>
+              <a href="#exercises-section" class="btn ghost">Quiz yourself</a>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <canvas id="hero-3d-visual"></canvas>
+          </div>
+        </div>
+        
+        <div class="scroll-indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="6" width="14" height="12" rx="7"></rect>
+                <line x1="12" y1="10" x2="12" y2="14"></line>
+            </svg>
+        </div>
+    </header>
+
+    <main>
+        <!-- Interactive Demo Section -->
+        <section id="demo-section">
+            <div class="container scroll-animate">
+                <div class="animated-border-wrap demo-card-wrap">
+                    <div class="demo-card">
+                        <div id="svg-temp-container">
+                            <svg id="temp-diagram-svg" viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
+                                <style>
+                                    .lcd-bg { fill: #006064; rx: 8; }
+                                    .lcd-screen { fill: #0D1117; rx: 4; }
+                                    .lcd-text { fill: #76FF03; font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; opacity: 0.9; }
+                                    .ds-body { fill: #1d1d1f; stroke: #333; stroke-width: 1; }
+                                    .sensor-label { fill: #c7c7c7; font-family: 'Space Grotesk'; font-size: 10px; }
+                                    .wire { fill: none; stroke-width: 3; stroke-linecap: round; }
+                                    .term { fill: #95a5a6; }
+                                </style>
+                                <!-- LCD Display -->
+                                <rect class="lcd-bg" x="50" y="30" width="300" height="100" />
+                                <rect class="lcd-screen" x="65" y="45" width="270" height="70" />
+                                <text id="lcd-line-1" class="lcd-text" x="75" y="75">Temp: 22.50 C</text>
+                                <text id="lcd-line-2" class="lcd-text" x="75" y="100">Voltage: 0.73 V</text>
+                                
+                                <!-- TMP36 Sensor -->
+                                <g transform="translate(180, 180)">
+                                    <path class="ds-body" d="M -20,0 A 20 20 0 0 1 20,0 V 40 H -20 Z" />
+                                    <rect class="term" x="-15" y="40" width="2" height="10"/>
+                                    <rect class="term" x="-1" y="40" width="2" height="10"/>
+                                    <rect class="term" x="13" y="40" width="2" height="10"/>
+                                    <text class="sensor-label" x="0" y="30" text-anchor="middle">TMP36</text>
+                                </g>
+                                
+                                <!-- Wires -->
+                                <path class="wire wire-pulse" stroke="#e74c3c" d="M 165,230 v -10 q 0 -10 10 -10 h -60" /> <!-- VCC -->
+                                <path class="wire wire-pulse" stroke="#007AFF" d="M 180,230 v 5 q 0 10 10 10 h 80" /> <!-- Signal -->
+                                <path class="wire wire-pulse" stroke="#8d6e63" d="M 195,230 v -10 q 0 -10 10 -10 h 110" /> <!-- GND -->
+                            </svg>
+                        </div>
+
+                        <div class="controls-container">
+                            <div class="preset-buttons">
+                                <button class="preset-btn" id="btn-0" data-tooltip="Set to 0°C">0°C</button>
+                                <button class="preset-btn" id="btn-22" data-tooltip="Set to 22°C (Room)">22°C</button>
+                                <button class="preset-btn" id="btn-100" data-tooltip="Set to 100°C (Boiling)">100°C</button>
+                                <button class="preset-btn toggle-btn" id="btn-auto" data-tooltip="Toggle Auto-Temp Cycle">Auto Cycle</button>
+                            </div>
+                            
+                            <div class="slider-wrapper">
+                                <input type="range" id="temp-slider" min="-40" max="125" value="22.5" step="0.5" aria-label="Temperature (-40°C to 125°C)" role="slider" aria-valuemin="-40" aria-valuemax="125" aria-valuenow="22.5">
+                            </div>
+                            
+                            <div class="readouts">
+                                <div class="readout-item">
+                                    <span id="temp-c-value">22.5°</span>
+                                    <p>Celsius</p>
+                                </div>
+                                <div class="readout-item">
+                                    <span id="temp-f-value">72.5°</span>
+                                    <p>Fahrenheit</p>
+                                </div>
+                                <div class="readout-item">
+                                    <span id="voltage-value">0.73 V</span>
+                                    <p>Output Voltage</p>
+                                </div>
+                            </div>
+                            
+                            <div class="metrics">
+                                <div class="metric-item">
+                                    <span>10 mV/°C</span>
+                                    <p>Sensitivity</p>
+                                </div>
+                                <div class="metric-item">
+                                    <span>500 mV</span>
+                                    <p>Offset at 0°C</p>
+                                </div>
+                                <div class="metric-item">
+                                    <span>-40° to 125°</span>
+                                    <p>Range</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- How It Works Section -->
+        <section id="how-it-works-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">How it works.</h2>
+                <div class="how-it-works-grid scroll-animate">
+                    <div class="how-it-works-text">
+                        <h3>Analog Voltage Output</h3>
+                        <p>The <strong>TMP36</strong> is a linear analog temperature sensor. Unlike digital sensors that send complex data packets, the TMP36 outputs a simple <strong>voltage</strong> on its middle pin that is directly proportional to the temperature.</p>
+                        <p>The scale is <strong>10 millivolts per degree Celsius</strong>. To handle negative temperatures without negative voltage, the sensor adds a <strong>500mV offset</strong>. This means at 0°C, the output is 0.5V.</p>
+                        <p>Move the slider in the demo above to see how the output voltage changes in real-time with temperature.</p>
+                        <p style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 3px solid #76FF03; border-radius: 4px;"><strong>Simulation note (Tinkercad):</strong> The TMP36 component in Tinkercad is a simplified simulation and does not always output the exact ADC values a physical TMP36 would. The demo sketch on this page uses a mapping tuned to Tinkercad's simulator so the displayed temperature appears correct inside the simulator. <em>This mapping is not the actual TMP36 equation.</em> For real hardware use: <code>Temp°C = (Vout − 0.5) × 100</code>.</p>
+                    </div>
+                    <div class="how-it-works-canvas">
+                        <canvas id="voltage-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bento Grid Features Section -->
+        <section id="features-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Inside the system.</h2>
+                
+                <div class="bento-grid">
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"></path></svg>
+                        <h3>Linear Output</h3>
+                        <p>Linear slope of 10mV/°C makes calculation incredibly simple without complex lookup tables.</p>
+                    </div>
+                    <div class="bento-card scroll-animate span-col-2">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        <h3>Instant Response</h3>
+                        <p>Because it is purely analog, there is zero communication latency. The voltage changes instantly as temperature shifts, limited only by the Arduino's ADC speed.</p>
+                    </div>
+                    <div class="bento-card scroll-animate span-col-2">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line></svg>
+                        <h3>No Libraries Required</h3>
+                        <p>Unlike DHT11 or DS18B20, you don't need to install any external libraries. Just use `analogRead()` and simple math.</p>
+                    </div>
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                        <h3>Low Power</h3>
+                        <p>Draws less than 50 µA of current, making it excellent for battery-powered loggers.</p>
+                    </div>
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <h3>Analog Precision</h3>
+                        <p>10-bit ADC resolution means ~0.5°C precision at room temperature.</p>
+                    </div>
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <h3>Hands-on Exercises</h3>
+                        <p>Short quizzes and coding challenges to reinforce learning.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical Specifications Section -->
+        <section id="specifications-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Technical Specifications</h2>
+                <div class="specs-grid scroll-animate">
+                    <div class="spec-category">
+                        <h3>Electrical</h3>
+                        <ul>
+                            <li><strong>Operating Voltage:</strong> 2.7V - 5.5V DC</li>
+                            <li><strong>Current Draw:</strong> 50 µA (typical)</li>
+                            <li><strong>Scale Factor:</strong> 10 mV/°C</li>
+                            <li><strong>Zero Offset:</strong> 500 mV at 0°C</li>
+                        </ul>
+                    </div>
+                    <div class="spec-category">
+                        <h3>Performance</h3>
+                        <ul>
+                            <li><strong>Temperature Range:</strong> -40°C to +125°C</li>
+                            <li><strong>Accuracy:</strong> ±2°C (at 25°C)</li>
+                            <li><strong>Response Time:</strong> &lt;10 seconds (in still air)</li>
+                            <li><strong>Output Impedance:</strong> ~1 kΩ</li>
+                        </ul>
+                    </div>
+                    <div class="spec-category">
+                        <h3>Physical</h3>
+                        <ul>
+                            <li><strong>Package:</strong> TO-92, SOIC, SOT-23</li>
+                            <li><strong>Pin Count:</strong> 3 (VCC, VOUT, GND)</li>
+                            <li><strong>Mounting:</strong> Through-hole or surface mount</li>
+                            <li><strong>Operating Temp:</strong> -40°C to +125°C</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Applications Section -->
+        <section id="applications-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Real-World Applications</h2>
+                <div class="applications-grid">
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        </div>
+                        <h3>Data Logging</h3>
+                        <p>Environmental monitoring over long periods.</p>
+                    </div>
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        </div>
+                        <h3>CPU Cooling</h3>
+                        <p>Fan speed control based on heat sink temperature.</p>
+                    </div>
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        </div>
+                        <h3>Alarms</h3>
+                        <p>Overheat protection for battery systems.</p>
+                    </div>
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.74 5.88-5.74 5.88-5.74-5.88z"></path><path d="M12 22.31l5.74-5.88-5.74-5.88-5.74 5.88z"></svg>
+                        </div>
+                        <h3>Weather</h3>
+                        <p>Simple DIY weather stations.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Comparison Table Section -->
+        <section id="comparison-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Sensor Comparison</h2>
+                <div class="comparison-table-wrapper scroll-animate">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>TMP36</th>
+                                <th>DHT11</th>
+                                <th>DS18B20</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Type</td>
+                                <td>Analog</td>
+                                <td>Digital</td>
+                                <td>Digital (1-Wire)</td>
+                            </tr>
+                            <tr>
+                                <td>Range</td>
+                                <td>-40°C to 125°C</td>
+                                <td>0°C to 50°C</td>
+                                <td>-55°C to 125°C</td>
+                            </tr>
+                            <tr>
+                                <td>Precision</td>
+                                <td>Good (±2°C)</td>
+                                <td>Low (±2°C)</td>
+                                <td>High (±0.5°C)</td>
+                            </tr>
+                            <tr>
+                                <td>Complexity</td>
+                                <td>Very Low</td>
+                                <td>Medium (Lib)</td>
+                                <td>Medium (Lib)</td>
+                            </tr>
+                            <tr>
+                                <td>Humidity</td>
+                                <td>No</td>
+                                <td>Yes</td>
+                                <td>No</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wiring Diagram Section -->
+        <section id="wiring-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Wiring Guide</h2>
+                <div class="wiring-content scroll-animate">
+                    <div class="wiring-diagram">
+                        <svg id="wiring-svg" viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg">
+                            <style>
+                                .wiring-text { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12px; fill: var(--text-primary); }
+                                .wiring-label { font-family: 'Space Grotesk', sans-serif; font-size: 12px; fill: var(--text-secondary); }
+                                .board-bg { fill: #2c3e50; stroke: #34495e; stroke-width: 2; rx: 8; }
+                                .arduino-bg { fill: #00878F; stroke: #005f63; }
+                                .component-bg { fill: #1f2937; stroke: #374151; }
+                                .pin-metal { fill: #bdc3c7; stroke: none; }
+                                .wire { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
+                                .wire-red { stroke: #e74c3c; } /* 5V */
+                                .wire-black { stroke: #2d3436; } /* GND */
+                                .wire-blue { stroke: #3498db; } /* Signal */
+                                .wire-yellow { stroke: #f1c40f; } /* SCL */
+                                .wire-green { stroke: #2ecc71; } /* SDA */
+                            </style>
+
+                            <!-- ARDUINO UNO -->
+                            <g transform="translate(50, 150)">
+                                <!-- Widened Board significantly to 240 for max spacing -->
+                                <rect class="board-bg arduino-bg" width="240" height="200" />
+                                <text class="wiring-text" x="120" y="50" text-anchor="middle" fill="white" font-size="16">Arduino Uno</text>
+                                
+                                <!-- Power Header (Huge Spacing) -->
+                                <g transform="translate(20, 160)">
+                                    <!-- 5V (x=0) -->
+                                    <circle class="pin-metal" cx="0" cy="10" r="4" />
+                                    <!-- TEXT MOVED UP -->
+                                    <text class="wiring-label" x="0" y="-10" text-anchor="middle" fill="white">5V</text>
+                                    
+                                    <!-- GND (x=50) -->
+                                    <circle class="pin-metal" cx="50" cy="10" r="4" />
+                                    <!-- TEXT MOVED UP -->
+                                    <text class="wiring-label" x="50" y="-10" text-anchor="middle" fill="white">GND</text>
+                                </g>
+
+                                <!-- Analog Header (Huge Spacing) -->
+                                <g transform="translate(120, 160)">
+                                    <!-- A0 (x=0) -->
+                                    <circle class="pin-metal" cx="0" cy="10" r="4" />
+                                    <!-- TEXT MOVED UP -->
+                                    <text class="wiring-label" x="0" y="-10" text-anchor="middle" fill="white">A0</text>
+                                    
+                                    <!-- A4 (x=40) -->
+                                    <circle class="pin-metal" cx="40" cy="10" r="4" />
+                                    <!-- TEXT MOVED UP -->
+                                    <text class="wiring-label" x="40" y="-10" text-anchor="middle" fill="white">A4</text>
+                                    
+                                    <!-- A5 (x=80) -->
+                                    <circle class="pin-metal" cx="80" cy="10" r="4" />
+                                    <!-- TEXT MOVED UP -->
+                                    <text class="wiring-label" x="80" y="-10" text-anchor="middle" fill="white">A5</text>
+                                </g>
+                            </g>
+
+                            <!-- LCD SCREEN (I2C) -->
+                            <g transform="translate(280, 50)">
+                                <rect class="board-bg component-bg" width="180" height="100" />
+                                <rect x="10" y="10" width="160" height="60" fill="#006064" rx="4" />
+                                <text class="wiring-text" x="90" y="45" text-anchor="middle" fill="#76FF03">I2C LCD (16x2)</text>
+                                
+                                <!-- Pins: GND, VCC, SDA, SCL -->
+                                <g transform="translate(20, 80)">
+                                    <circle class="pin-metal" cx="10" cy="10" r="4" />
+                                    <text class="wiring-label" x="10" y="-5" text-anchor="middle" fill="white">GND</text>
+                                    
+                                    <circle class="pin-metal" cx="50" cy="10" r="4" />
+                                    <text class="wiring-label" x="50" y="-5" text-anchor="middle" fill="white">VCC</text>
+                                    
+                                    <circle class="pin-metal" cx="90" cy="10" r="4" />
+                                    <text class="wiring-label" x="90" y="-5" text-anchor="middle" fill="white">SDA</text>
+                                    
+                                    <circle class="pin-metal" cx="130" cy="10" r="4" />
+                                    <text class="wiring-label" x="130" y="-5" text-anchor="middle" fill="white">SCL</text>
+                                </g>
+                            </g>
+
+                            <!-- TMP36 SENSOR (Significantly Widened for Readability) -->
+                            <!-- MOVED FURTHER RIGHT (350 from 320) -->
+                            <g transform="translate(350, 250)">
+                                <!-- Widened Body to 100 -->
+                                <path class="component-bg" d="M 0,0 H 100 V 50 H 0 Z" />
+                                <path d="M 0,0 A 50 50 0 0 1 100,0" fill="#1f2937" stroke="#374151" stroke-width="2"/>
+                                <text class="wiring-text" x="50" y="30" text-anchor="middle" fill="white" font-weight="bold">TMP36</text>
+                                <text class="wiring-label" x="50" y="45" text-anchor="middle">(Front View)</text>
+                                
+                                <!-- Pins: 5V, Vout, GND (Fan Out) -->
+                                <g transform="translate(0, 50)">
+                                    <!-- Left: 5V (X=15) -->
+                                    <circle class="pin-metal" cx="15" cy="0" r="4" /> 
+                                    <text class="wiring-label" x="15" y="25" text-anchor="middle" fill="#e74c3c">Pin 1 (5V)</text>
+                                    
+                                    <!-- Mid: Vout (X=50) -->
+                                    <circle class="pin-metal" cx="50" cy="0" r="4" /> 
+                                    <!-- Staggered Lower -->
+                                    <text class="wiring-label" x="50" y="40" text-anchor="middle" fill="#3498db">Pin 2 (A0)</text>
+                                    
+                                    <!-- Right: GND (X=85) -->
+                                    <circle class="pin-metal" cx="85" cy="0" r="4" /> 
+                                    <text class="wiring-label" x="85" y="25" text-anchor="middle" fill="#7f8c8d">Pin 3 (GND)</text>
+                                </g>
+                            </g>
+
+                            <!-- WIRING CONNECTIONS -->
+                            
+                            <!-- 1. POWER (5V) - Red -->
+                            <!-- Arduino 5V (X=70) -> TMP36 Left (Pin 1 is at X=350+15 = 365) -->
+                            <path class="wire wire-red" d="M 70 320 V 360 H 365 V 300" />
+                            <!-- LCD VCC -> TMP36 Left (Shared Rail) -->
+                            <!-- Sensor 5V (365) to LCD VCC (350) -->
+                            <path class="wire wire-red" d="M 365 300 V 220 H 350 V 140" />
+
+                            <!-- 2. GROUND (GND) - Black -->
+                            <!-- Arduino GND (X=120) -> TMP36 Right (Pin 3 is at X=350+85 = 435) -->
+                            <path class="wire wire-black" d="M 120 320 V 370 H 435 V 300" />
+                            <!-- LCD GND -> TMP36 Right (Shared Rail) -->
+                            <!-- Sensor GND (435) to LCD GND (310) -->
+                            <path class="wire wire-black" d="M 435 300 V 200 H 310 V 140" />
+
+                            <!-- 3. SIGNAL (A0) - Blue -->
+                            <!-- TMP36 Mid (Pin 2 is at X=350+50 = 400) -> Arduino A0 (X=170) -->
+                            <path class="wire wire-blue" d="M 170 320 V 350 H 400 V 300" />
+
+                            <!-- 4. I2C DATA (SDA) - Green -->
+                            <!-- LCD SDA -> Arduino A4. Group X=50. Subgroup X=120. Pin local=40. Total=210. -->
+                            <path class="wire wire-green" d="M 390 140 V 360 H 210 V 320" />
+
+                            <!-- 5. I2C CLOCK (SCL) - Yellow -->
+                            <!-- LCD SCL -> Arduino A5. Group X=50. Subgroup X=120. Pin local=80. Total=250. -->
+                            <path class="wire wire-yellow" d="M 430 140 V 370 H 250 V 320" />
+
+                        </svg>
+                    </div>
+                    <div class="wiring-instructions">
+                        <h3>Connection Checklist</h3>
+                        <p style="margin-bottom: 15px;"><strong>Note:</strong> Tinkercad I2C LCD modules may use different addresses (e.g. 0x20, 0x27, 0x3F). If the LCD stays blank in the simulator, run an I2C scanner sketch or change the address in the code until it responds.</p>
+                        <div class="wiring-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>Shared Power Rails</strong>
+                                <p>Connect <strong>5V</strong> and <strong>GND</strong> from Arduino to the breadboard rails. Both the LCD and TMP36 share these power lines.</p>
+                            </div>
+                        </div>
+                        <div class="wiring-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>TMP36 Sensor (Front View)</strong>
+                                <p>With the <strong>flat side facing you</strong>:<br>Pin 1 (Left) → 5V<br>Pin 2 (Middle) → A0<br>Pin 3 (Right) → GND</p>
+                            </div>
+                        </div>
+                        <div class="wiring-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>I2C LCD</strong>
+                                <p>VCC → 5V<br>GND → GND<br>SDA → A4<br>SCL → A5</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Code Section -->
+        <section id="code-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Simple to code.</h2>
+                <div class="code-wrapper scroll-animate">
+                    <button class="copy-code-btn" id="copy-code">Copy</button>
+                    <!-- Escaped HTML entities in include statements to prevent browser hiding them -->
+                    <pre class="line-numbers"><code id="code-block" class="language-cpp">// TINKERCAD ONLY — simulator mapping + Adafruit I2C LCD
+#include &lt;Adafruit_LiquidCrystal.h&gt;
+
+Adafruit_LiquidCrystal lcd_1(0); // 0 = select module in Tinkercad UI
+
+void setup() {
+  pinMode(A0, INPUT);
+  Serial.begin(9600);
+
+  lcd_1.begin(16, 2);
+  lcd_1.backlight();     // ensure backlight is on in Tinkercad
+}
+
+void loop() {
+  int raw = analogRead(A0);
+
+  // Tinkercad-tuned mapping (simulator only)
+  // Keep as integer math because Tinkercad's TMP36 is simulated.
+  int temp = map((int)((raw - 20) * 3.04), 0, 1023, -20, 120);
+
+  // Debug - helpful if LCD stays blank
+  Serial.print("raw=");
+  Serial.print(raw);
+  Serial.print("  temp=");
+  Serial.println(temp);
+
+  lcd_1.clear();                 // prevents ghosting from previous text
+  lcd_1.setCursor(0, 0);
+  lcd_1.print("Temp Monitr Sys");
+  lcd_1.setCursor(0, 1);
+  lcd_1.print("Temp=");
+  lcd_1.setCursor(6, 1);
+  lcd_1.print(temp);
+  lcd_1.print(" C    ");          // trailing spaces clear leftover chars
+
+  delay(500);                    // stable, readable update rate
+}</code></pre>
+                </div>
+                
+                <h3 style="margin-top: 40px; color: var(--text-primary);">Alternative: Real Hardware Code</h3>
+                <div class="code-wrapper scroll-animate">
+                    <pre class="line-numbers"><code class="language-cpp">// REAL HARDWARE — actual TMP36 conversion
+#include &lt;LiquidCrystal_I2C.h&gt;
+LiquidCrystal_I2C lcd(0x20, 16, 2); // change address to your module (0x27 or 0x3F, etc)
+
+void setup() {
+  Serial.begin(9600);
+  lcd.init();
+  lcd.backlight();
+}
+
+void loop() {
+  int reading = analogRead(A0);
+  float voltage = reading * (5.0 / 1024.0);  // use 3.3 if your ref is 3.3V
+  float tempC = (voltage - 0.5) * 100.0;
+
+  lcd.setCursor(0,0);
+  lcd.print("Temp: ");
+  lcd.print(tempC, 1);
+  lcd.print(" C   ");
+
+  lcd.setCursor(0,1);
+  lcd.print("Volt: ");
+  lcd.print(voltage, 2);
+  lcd.print(" V   ");
+
+  delay(500);
+}</code></pre>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Common Mistakes Section -->
+        <section id="common-mistakes-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Common Mistakes</h2>
+                <div class="troubleshooting-accordion">
+                    <details class="trouble-item scroll-animate">
+                        <summary>Reading > 100°C or fluctuates wildly</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Check Ground:</strong> If the GND pin disconnects, the reading floats. Also, ensure you are using 5.0V in your math if your board is 5V.</p>
+                                <p><strong>Stabilize Power:</strong> Add a 0.1µF capacitor between VCC and GND close to the sensor to filter noise.</p>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <details class="trouble-item scroll-animate">
+                        <summary>Sensor gets hot</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Reverse Polarity:</strong> You likely wired 5V and GND backwards. Unplug immediately to save the sensor!</p>
+                                <p><strong>Over-voltage:</strong> TMP36 max voltage is 5.5V. Applying higher voltage will damage it.</p>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Quiz/Exercise Section -->
+        <section id="exercises-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Test Your Knowledge</h2>
+                
+                <!-- Ex 1 -->
+                <div class="exercise-card scroll-animate">
+                    <h3>Exercise 1: Voltage to Temperature</h3>
+                    <p>If Vout is 0.75V, what is the temperature? <br><small>Formula: Temp = (V - 0.5) × 100</small></p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex1-feedback', 'Incorrect. (0.75-0.5)*100 = 0.25*100')">75°C</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex1-feedback', 'Correct! 0.25 × 100 = 25°C')">25°C</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex1-feedback', 'Incorrect. Check the decimal point.')">2.5°C</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex1-feedback', 'Incorrect.')">100°C</button>
+                    </div>
+                    <div id="ex1-feedback" class="feedback"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex1-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex1-hint" class="hint hidden">Hint: 0.75 - 0.50 = 0.25. Then multiply by 100.</div>
+                </div>
+        
+                <!-- Ex 2 -->
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.2s;">
+                    <h3>Exercise 2: Temperature to Voltage</h3>
+                    <p>A TMP36 measures 45°C. What voltage will it output?</p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex2-feedback', 'Incorrect. Remember the 500mV offset.')">0.45 V</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex2-feedback', 'Correct! (45×0.01) + 0.5 = 0.95V')">0.95 V</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex2-feedback', 'Incorrect. Too high.')">1.45 V</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex2-feedback', 'Incorrect.')">0.50 V</button>
+                    </div>
+                    <div id="ex2-feedback" class="feedback"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex2-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex2-hint" class="hint hidden">Hint: V = (T × 0.01) + 0.5</div>
+                </div>
+        
+                <!-- Ex 3 -->
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.4s;">
+                    <h3>Exercise 3: Negative Temperature</h3>
+                    <p>What voltage does TMP36 output at -10°C?</p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex3-feedback', 'Incorrect. Voltage cannot be negative.')">-0.10 V</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex3-feedback', 'Incorrect. That is 10 degrees.')">0.60 V</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex3-feedback', 'Correct! (-0.1) + 0.5 = 0.40V')">0.40 V</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex3-feedback', 'Incorrect.')">0.00 V</button>
+                    </div>
+                    <div id="ex3-feedback" class="feedback"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex3-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex3-hint" class="hint hidden">Hint: V = (-10 × 0.01) + 0.5</div>
+                </div>
+        
+                <!-- Ex 4 -->
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.6s;">
+                    <h3>Exercise 4: Analog Reading</h3>
+                    <p>If analogRead(A0) returns 512, what temperature is being measured? (5V ref)</p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex4-feedback', 'Incorrect. 512 is 2.5V.')">50°C</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex4-feedback', 'Incorrect.')">25°C</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex4-feedback', 'Incorrect.')">125°C</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex4-feedback', 'Correct! 512 maps to 2.5V. (2.5-0.5)*100 = 200°C (Theoretical)')">200°C</button>
+                    </div>
+                    <div id="ex4-feedback" class="feedback"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex4-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex4-hint" class="hint hidden">Hint: First convert to voltage: V = 512 × 5.0 / 1024.0 = 2.5V</div>
+                </div>
+        
+                <!-- Question 5: Coding Challenge (Kept as Text Area) -->
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.8s;">
+                    <h3>Exercise 5: Coding Challenge</h3>
+                    <p>Write the single line of code to calculate `tempC` given a `voltage` variable.</p>
+                    <textarea id="code-answer" rows="3" placeholder="float tempC = ...;"></textarea>
+                    <button id="run-code-btn">Verify Logic</button>
+                    <div id="code-feedback" class="feedback" style="display: none;"></div>
+                    <canvas class="confetti-canvas"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div>© <strong>TempView</strong> — Built for learning</div>
+        <!-- Progress Bar -->
+        <div id="progress-bar-container">
+            <span id="progress-bar-label">Learning Progress: 0/5</span>
+            <div id="progress-bar">
+                <div id="progress-bar-inner"></div>
+            </div>
+        </div>
+        <nav>
+          <a href="#features-section">Features</a>
+          <a href="#comparison-section">Compare</a>
+          <a href="#common-mistakes-section">Help</a>
+        </nav>
+      </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" title="Back to top">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </button>
+    
+    <!-- Presenter Controls (Hidden by default) -->
+    <div id="presenter-controls">
+        <button class="presenter-btn" onclick="document.body.classList.toggle('presentation-mode')">Exit Mode</button>
+        <button class="presenter-btn" onclick="toggleLaser()">Laser</button>
+        <button class="presenter-btn" onclick="clearAnnotations()">Clear Draw</button>
+    </div>
+
+    <!-- Custom Script -->
+    <script src="lcd_script.js"></script>
+    
+    <!-- Inline Script for Quiz Logic -->
+    <script>
+        function checkAnswer(btn, isCorrect, feedbackId, msg) {
+            const feedback = document.getElementById(feedbackId);
+            const parent = btn.parentElement;
+            
+            // Disable all buttons in this group
+            const buttons = parent.querySelectorAll('.quiz-btn');
+            buttons.forEach(b => b.disabled = true);
+            
+            if (isCorrect) {
+                btn.classList.add('correct');
+                feedback.textContent = msg;
+                feedback.style.color = '#81C784';
+                feedback.style.display = 'block';
+                
+                // Trigger confetti
+                if (window.confetti) {
+                    const rect = btn.getBoundingClientRect();
+                    const x = (rect.left + rect.width / 2) / window.innerWidth;
+                    const y = (rect.top + rect.height / 2) / window.innerHeight;
+                    confetti({
+                        particleCount: 60,
+                        spread: 70,
+                        origin: { x: x, y: y },
+                        colors: ['#76FF03', '#00E5FF', '#FFFFFF']
+                    });
+                }
+                
+                // Update progress (simple simulation)
+                const progressInner = document.getElementById('progress-bar-inner');
+                const currentWidth = parseFloat(progressInner.style.width) || 0;
+                if(currentWidth < 100) {
+                    const newWidth = Math.min(currentWidth + 20, 100);
+                    progressInner.style.width = newWidth + '%';
+                    document.getElementById('progress-bar-label').textContent = `Learning Progress: ${newWidth/20}/5`;
+                }
+                
+            } else {
+                btn.classList.add('incorrect');
+                feedback.textContent = msg;
+                feedback.style.color = '#E57373';
+                feedback.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

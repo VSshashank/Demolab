@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServoLab - Interactive Servo Motor Guide</title>
+
+    <!-- 
+      NEW: Switched to the "Space Grotesk" font for a modern, tech-friendly aesthetic.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- NEW: Import three.js for the 3D hero visual -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- NEW: Import Simplex Noise for background blobs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/3.0.0/simplex-noise.min.js"></script>
+
+    <!-- NEW: Import Chart.js for Data Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- NEW: Confetti Library for Quiz Rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+    <!-- NEW: Import Prism.js for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+
+
+    <!-- NEW: SEO & Meta Tags (Item 18) -->
+    <meta name="description" content="Interactive servo motor tutorial with real-time demonstrations, PWM visualization, and hands-on exercises. Perfect for Arduino projects and STEM education.">
+    <meta name="keywords" content="servo motor, Arduino, PWM, robotics, STEM, education, interactive tutorial">
+    
+    <!-- Open Graph (for social media) -->
+    <meta property="og:title" content="ServoLab - Interactive Servo Motor Guide">
+    <meta property="og:description" content="Learn how servo motors work with interactive demos and visualizations.">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ServoLab - Interactive Servo Motor Guide">
+    <meta name="twitter:description" content="Learn how servo motors work with interactive demos and visualizations.">
+
+    <!-- NEW: Link to external stylesheet -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Quiz & Interaction Styles -->
+    <style>
+        /* Ensure background canvases don't block interaction */
+        #background-blobs, 
+        #annotation-canvas, 
+        #hero-constellation,
+        .confetti-canvas,
+        .card-particles {
+            pointer-events: none;
+        }
+        
+        /* Quiz Styling */
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+            position: relative;
+            z-index: 50; /* Ensure clickable */
+        }
+
+        .quiz-btn {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .quiz-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-blue);
+        }
+
+        .quiz-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .quiz-btn.correct {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: #4CAF50;
+            color: #81C784;
+        }
+
+        .quiz-btn.incorrect {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: #F44336;
+            color: #E57373;
+        }
+
+        /* Ensure other inputs are interactive */
+        textarea#code-answer,
+        .preset-btn,
+        .copy-code-btn,
+        #angle-slider,
+        summary {
+            position: relative;
+            z-index: 50;
+            pointer-events: auto;
+        }
+
+        body.presentation-mode #annotation-canvas {
+            pointer-events: auto;
+        }
+    </style>
+
+</head>
+<body>
+
+    <div id="page-loader" style="position: fixed; inset: 0; background: var(--bg-primary); z-index: 10000; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s; opacity: 1;">
+        <div style="width: 50px; height: 50px; border: 3px solid var(--border-light); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    </div>
+    
+    <!-- REMOVED: #cursor-spotlight -->
+    <!-- REMOVED: #cursor-trail -->
+    <canvas id="background-blobs"></canvas>
+    
+    <!-- NEW: Achievement Toast Placeholder -->
+    <div id="achievement-toast">
+        <div id="achievement-icon">🏆</div>
+        <div>
+            <div id="achievement-title">Achievement Unlocked!</div>
+            <div id="achievement-desc">You're a Quiz Master!</div>
+        </div>
+    </div>
+
+    <!-- NEW: Presentation Tools -->
+    <canvas id="annotation-canvas"></canvas>
+    <div id="laser-spotlight"></div>
+    <div id="perf-monitor"></div>
+    <div id="shortcuts-overlay"></div>
+
+
+    <!-- Header Nav -->
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="logo" href="#">ServoLab</a>
+        <nav class="nav">
+          <a href="#demo-section">Demo</a>
+          <a href="#how-it-works-section">How it works</a>
+          <a href="#specifications-section">Specs</a>
+          <a href="#exercises-section">Exercises</a>
+          <!-- REMOVED: #theme-toggle -->
+        </nav>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <header id="hero">
+        <canvas id="hero-constellation"></canvas>
+        
+        <div class="hero-inner container">
+          <div class="hero-copy">
+            <!-- NEW: Removed typing effect class -->
+            <h1 id="hero-title" aria-label="A new spin on precision.">A new spin on precision.</h1>
+            <p>Interactive servo demo, visual explanations and exercises — perfect for projects and teaching.</p>
+            <div class="hero-cta">
+              <a href="#demo-section" class="btn primary">Try the demo</a>
+              <a href="#exercises-section" class="btn ghost">Quiz yourself</a>
+              <!-- REMOVED Share Button -->
+            </div>
+          </div>
+          <div class="hero-visual">
+            <!-- NEW: Replaced SVG with a canvas for three.js -->
+            <canvas id="hero-3d-visual"></canvas>
+          </div>
+        </div>
+        
+        <div class="scroll-indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="6" width="14" height="12" rx="7"></rect>
+                <line x1="12" y1="10" x2="12" y2="14"></line>
+            </svg>
+        </div>
+    </header>
+
+    <main>
+        <!-- Interactive 2D Demo Section -->
+        <section id="demo-section">
+            <div class="container scroll-animate">
+                <div class="animated-border-wrap demo-card-wrap">
+                    <div class="demo-card">
+                        <div id="svg-servo-container">
+                            <svg id="servo-diagram-svg" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <g id="gear-shape" transform-origin="center">
+                                        <path class="servo-gear" d="M 0,-10 L 2,-10 L 3,-8 L 5,-8 L 6,-10 L 8,-10 L 8,-5 L 10,-3 L 10,0 L 8,2 L 8,5 L 10,8 L 10,10 L 8,10 L 6,8 L 5,8 L 3,10 L 2,10 L 0,10 L -2,10 L -3,8 L -5,8 L -6,10 L -8,10 L -8,5 L -10,3 L -10,0 L -8,-2 L -8,-5 L -10,-8 L -10,-10 L -8,-10 L -6,-8 L -5,-8 L -3,-10 L -2,-10 Z"/>
+                                        <circle class="servo-cutaway" cx="0" cy="0" r="3" />
+                                    </g>
+                                    
+                                    <clipPath id="cutaway-clip">
+                                        <rect x="60" y="50" width="180" height="100" rx="4" />
+                                    </clipPath>
+                                </defs>
+                                
+                                <g id="wires-group" style="transform: translateZ(-5px)">
+                                    <path class="servo-wire wire-gnd" d="M 50, 130 Q 30 130, 10 150"/>
+                                    <path class="servo-wire wire-vcc" d="M 50, 138 Q 30 138, 10 160"/>
+                                    <path class="servo-wire wire-signal" d="M 50, 146 Q 30 146, 10 170"/>
+                                </g>
+                                
+                                <g id="case-group" style="transform: translateZ(0px)">
+                                    <rect class="servo-case" x="50" y="40" width="200" height="120" rx="8" />
+                                    <rect class="servo-cutaway" x="60" y="50" width="180" height="100" rx="4" />
+                                </g>
+                                
+                                <g id="internals-group" style="transform: translateZ(5px)">
+                                    <rect class="servo-motor" x="70" y="110" width="40" height="30" rx="4"/>
+                                    <circle class="servo-motor" cx="110" cy="125" r="10"/>
+                                    <text class="servo-label" x="90" y="105">DC Motor</text>
+                                    
+                                    <circle class="servo-pot" cx="150" cy="70" r="12" />
+                                    <text class="servo-label" x="165" y="60">Potentiometer</text>
+                                    
+                                    <use id="gear1" href="#gear-shape"/>
+                                    <use id="gear2" href="#gear-shape"/>
+                                    <use id="gear3" href="#gear-shape"/>
+                                    <text class="servo-label" x="110" y="150">Gears</text>
+                                </g>
+                                
+                                <circle class="servo-shaft" cx="150" cy="50" r="8" />
+                                
+                                <g id="angle-arc-group">
+                                    <path id="angle-arc" class="angle-arc-path" fill="none" stroke="#007AFF" stroke-width="2" stroke-dasharray="3 3"/>
+                                    <text id="angle-arc-text" class="angle-arc-label" x="150" y="85" text-anchor="middle">90°</text>
+                                </g>
+                                
+                                <g id="speed-lines" opacity="0">
+                                    <line x1="210" y1="45" x2="230" y2="45" stroke="#007AFF" stroke-width="2"/>
+                                    <line x1="210" y1="50" x2="235" y2="50" stroke="#007AFF" stroke-width="2"/>
+                                    <line x1="210" y1="55" x2="230" y2="55" stroke="#007AFF" stroke-width="2"/>
+                                </g>
+                                
+                                <g id="servo-horn-group" style="transform: translateZ(10px)">
+                                    <path class="servo-horn" d="M 150,50 L 120,45 L 100,45 L 90,40 L 90,60 L 100,55 L 120,55 Z" />
+                                    <path class="servo-horn" d="M 150,50 L 180,45 L 200,45 L 210,40 L 210,60 L 200,55 L 180,55 Z" />
+                                    <circle class="servo-horn" cx="150" cy="50" r="12" />
+                                    <path fill="#7f8c8d" d="M 148 48 L 152 52 M 148 52 L 152 48" stroke="#7f8c8d" stroke-width="1.5" stroke-linecap="round"/>
+                                </g>
+                                
+                                <g id="particles-group"></g>
+                            </svg>
+                        </div>
+
+                        <div class="controls-container">
+                            <div class="preset-buttons">
+                                <button class="preset-btn" id="btn-0" aria-label="Set servo to 0 degrees" data-tooltip="Set to 0° (Key: 0)">0°</button>
+                                <button class="preset-btn" id="btn-90" aria-label="Set servo to 90 degrees" data-tooltip="Set to 90° (Key: 9)">90°</button>
+                                <button class="preset-btn" id="btn-180" aria-label="Set servo to 180 degrees" data-tooltip="Set to 180° (Key: 8)">180°</button>
+                                <button class="preset-btn toggle-btn" id="btn-sweep" aria-label="Toggle auto-sweep" data-tooltip="Toggle Auto-Sweep (Key: S)">Auto-Sweep</button>
+                            </div>
+                            
+                            <div class="slider-wrapper">
+                                <input type="range" id="angle-slider" min="0" max="180" value="90" step="1" aria-label="Servo Angle (Use Arrow Keys)" role="slider" aria-valuemin="0" aria-valuemax="180" aria-valuenow="90">
+                            </div>
+                            
+                            <div class="readouts">
+                                <div class="readout-item">
+                                    <span id="angle-value">90.0°</span>
+                                    <p>Angle</p>
+                                </div>
+                                <div class="readout-item">
+                                    <span id="pulse-value">1.50 ms</span>
+                                    <p>Pulse Width</p>
+                                </div>
+                                <div class="readout-item">
+                                    <span id="duty-value">7.5%</span>
+                                    <p>Duty Cycle (20ms)</p>
+                                </div>
+                            </div>
+                            
+                            <div class="metrics">
+                                <div class="metric-item">
+                                    <span>0.10s / 60°</span>
+                                    <p>Speed</p>
+                                </div>
+                                <div class="metric-item">
+                                    <span>4.8 kg·cm</span>
+                                    <p>Torque (@ 6V)</p>
+                                </div>
+                                <div class="metric-item">
+                                    <span>4.8V - 6.0V</span>
+                                    <p>Voltage</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- How It Works Section -->
+        <section id="how-it-works-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">How it works.</h2>
+                <div class="how-it-works-grid scroll-animate">
+                    <div class="how-it-works-text">
+                        <h3>Pulse Width Modulation (PWM)</h3>
+                        <p>A servo motor expects a control pulse every 20 ms (a 50 Hz frequency). The width of this pulse tells the servo what angle to move to.</p>
+                        <p>By convention, a <strong>1 ms</strong> pulse commands a 0° angle, a <strong>1.5 ms</strong> pulse commands a 90° (neutral) angle, and a <strong>2 ms</strong> pulse commands a 180° angle. The servo's internal electronics measure this pulse width and drive the motor until the potentiometer feedback matches the desired position.</p>
+                        <p>Move the slider in the demo above to see how the pulse width changes in real-time to match the target angle.</p>
+                    </div>
+                    <div class="how-it-works-canvas">
+                        <canvas id="pwm-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bento Grid Features Section -->
+        <section id="features-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Inside the system.</h2>
+                
+                <div class="bento-grid">
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                        <h3>Closed-Loop Control</h3>
+                        <p>A potentiometer provides real-time position feedback, allowing the internal controller to correct errors and hold position.</p>
+                    </div>
+                    <div class="bento-card scroll-animate span-col-2">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        <h3>PWM Signal Control</h3>
+                        <p>Position is commanded by a simple pulse-width modulated (PWM) signal. The *duration* of the pulse, not its voltage, determines the target angle. Libraries like `Servo.h` abstract this into simple commands.</p>
+                    </div>
+                    <div class="bento-card scroll-animate span-col-2">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        <h3>High-Torque Gearbox</h3>
+                        <p>A multi-stage reduction gear train translates the high-speed, low-torque rotation of the DC motor into low-speed, high-torque power at the output shaft.</p>
+                    </div>
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        <h3>Interactive Demo</h3>
+                        <p>Control the horn, watch PWM timing and visualise duty cycle.</p>
+                    </div>
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <h3>Real Measurements</h3>
+                        <p>See real pulse widths and duty cycles — useful for lab work and teaching.</p>
+                    </div>
+                    <div class="bento-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <h3>Hands-on Exercises</h3>
+                        <p>Short quizzes and coding challenges to reinforce learning.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW: Performance Insights Section (Replaces Chart) -->
+        <section id="chart-section">
+            <div class="container scroll-animate">
+                <h2 class="animated-gradient">Performance Insights</h2>
+                <div class="specs-grid">
+                    <div class="spec-category">
+                        <h3>Speed</h3>
+                        <ul>
+                            <li><strong>Definition:</strong> How fast the servo can move from one position to another.</li>
+                            <li><strong>Unit:</strong> Typically `sec/60°` (e.g., 0.10s/60°).</li>
+                            <li><strong>Factor:</strong> Higher voltage (e.g., 6V vs 4.8V) usually results in faster speed.</li>
+                            <li><strong>Trade-off:</strong> Often traded for torque. Faster servos may have less holding power.</li>
+                        </ul>
+                    </div>
+                    <div class="spec-category">
+                        <h3>Torque</h3>
+                        <ul>
+                            <li><strong>Definition:</strong> The rotational force the servo can apply.</li>
+                            <li><strong>Unit:</strong> Typically `kg·cm` (e.g., 4.8 kg·cm).</li>
+                            <li><strong>Stall Torque:</strong> The maximum force before the motor stalls (stops).</li>
+                            <li><strong>Trade-off:</strong> Higher torque often means slower speed due to gearing.</li>
+                        </ul>
+                    </div>
+                    <div class="spec-category">
+                        <h3>Precision</h3>
+                        <ul>
+                            <li><strong>Definition:</strong> How accurately the servo can find and hold a target position.</li>
+                            <li><strong>Factor:</strong> Controlled by the "dead band"—a small range where the controller won't move.</li>
+                            <li><strong>Digital vs. Analog:</strong> Digital servos have much smaller dead bands and higher holding torque, making them far more precise.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Technical Specifications Section -->
+        <section id="specifications-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Technical Specifications</h2>
+                <div class="specs-grid scroll-animate">
+                    <div class="spec-category">
+                        <h3>Electrical</h3>
+                        <ul>
+                            <li><strong>Operating Voltage:</strong> 4.8V - 6.0V DC</li>
+                            <li><strong>Current Draw:</strong> ~150mA (idle), ~650mA (stall)</li>
+                            <li><strong>PWM Frequency:</strong> 50 Hz (20ms period)</li>
+                            <li><strong>Pulse Width Range:</strong> 1.0ms - 2.0ms</li>
+                        </ul>
+                    </div>
+                    <div class="spec-category">
+                        <h3>Mechanical</h3>
+                        <ul>
+                            <li><strong>Rotation Range:</strong> 180° (typical), 270° (extended)</li>
+                            <li><strong>Speed:</strong> 0.12s/60° @ 4.8V, 0.10s/60° @ 6.0V</li>
+                            <li><strong>Torque:</strong> 3.5 kg·cm @ 4.8V, 4.8 kg·cm @ 6.0V</li>
+                            <li><strong>Dead Band:</strong> ~1-3 microseconds</li>
+                        </ul>
+                    </div>
+                    <div class="spec-category">
+                        <h3>Physical</h3>
+                        <ul>
+                            <li><strong>Weight:</strong> ~9-12 grams</li>
+                            <li><strong>Dimensions:</strong> 22.5 × 11.8 × 27mm</li>
+                            <li><strong>Gear Material:</strong> Plastic or Metal</li>
+                            <li><strong>Operating Temp:</strong> -10°C to +50°C</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Applications Section -->
+        <section id="applications-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Real-World Applications</h2>
+                <div class="applications-grid">
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M8 4H4v4"></path><path d="M16 4h4v4"></path></svg>
+                        </div>
+                        <h3>Robotics</h3>
+                        <p>Robot arms, grippers, humanoid joints, walking mechanisms</p>
+                    </div>
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12 18 12 15 21 9 3 6 12 2 12"></path></svg>
+                        </div>
+                        <h3>RC Vehicles</h3>
+                        <p>Steering mechanisms, throttle control, camera gimbals, wing flaps</p>
+                    </div>
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        </div>
+                        <h3>Home Automation</h3>
+                        <p>Smart blinds, door locks, pet feeders, solar panel tracking</p>
+                    </div>
+                    <div class="application-card scroll-animate">
+                        <canvas class="card-particles"></canvas>
+                        <div class="app-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 1 4 14.5V4.5A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        </div>
+                        <h3>Education</h3>
+                        <p>Arduino projects, STEM kits, physics demonstrations</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Comparison Table Section -->
+        <section id="comparison-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Servo Motor Types Comparison</h2>
+                <div class="comparison-table-wrapper scroll-animate">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Standard Servo</th>
+                                <th>Continuous Rotation</th>
+                                <th>Digital Servo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Rotation Range</td>
+                                <td>~180°</td>
+                                <td>360° continuous</td>
+                                <td>~180°</td>
+                            </tr>
+                            <tr>
+                                <td>Position Control</td>
+                                <td>Yes</td>
+                                <td>No (speed only)</td>
+                                <td>Yes (precise)</td>
+                            </tr>
+                            <tr>
+                                <td>Response Time</td>
+                                <td>Moderate</td>
+                                <td>N/A</td>
+                                <td>Fast</td>
+                            </tr>
+                            <tr>
+                                <td>Holding Torque</td>
+                                <td>Moderate</td>
+                                <td>N/A</td>
+                                <td>High</td>
+                            </tr>
+                            <tr>
+                                <td>Cost</td>
+                                <td>$</td>
+                                <td>$</td>
+                                <td>$$$</td>
+                            </tr>
+                            <tr>
+                                <td>Use Cases</td>
+                                <td>Most projects</td>
+                                <td>Wheels, fans</td>
+                                <td>High-performance robots</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wiring Diagram Section -->
+        <section id="wiring-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Wiring Guide</h2>
+                <div class="wiring-content scroll-animate">
+                    <div class="wiring-diagram">
+                        <svg id="wiring-svg" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                            <style>
+                                .wiring-svg-text { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 10px; fill: var(--text-primary); }
+                                .wiring-svg-label { font-family: 'Space Grotesk', sans-serif; font-size: 8px; fill: var(--text-secondary); }
+                                .arduino-board { fill: #00979D; stroke: #00797C; stroke-width: 1; border-radius: var(--radius-md); }
+                                .servo-board { fill: var(--servo-blue); stroke: #3a8bc1; stroke-width: 1; border-radius: var(--radius-md); }
+                                .pin { fill: var(--bg-secondary); stroke: var(--border-light); }
+                            </style>
+                            <!-- Arduino -->
+                            <rect class="arduino-board" x="20" y="50" width="150" height="200" rx="8" />
+                            <text class="wiring-svg-text" x="55" y="75">Arduino Uno</text>
+                            <rect class="pin" x="70" y="240" width="10" height="10" />
+                            <text class="wiring-svg-label" x="85" y="250">GND</text>
+                            <rect class="pin" x="100" y="240" width="10" height="10" />
+                            <text class="wiring-svg-label" x="115" y="250">5V</text>
+                            <rect class="pin" x="130" y="240" width="10" height="10" />
+                            <text class="wiring-svg-label" x="145" y="250">~9</text>
+                            
+                            <!-- Servo -->
+                            <rect class="servo-board" x="300" y="100" width="80" height="100" rx="8" />
+                            <text class="wiring-svg-text" x="320" y="120">Servo</text>
+                            <rect class="pin" x="300" y="140" width="10" height="10" style="fill: #8d6e63;" />
+                            <rect class="pin" x="300" y="160" width="10" height="10" style="fill: #e74c3c;" />
+                            <rect class="pin" x="300" y="180" width="10" height="10" style="fill: #f39c12;" />
+                            
+                            <!-- Wires (Fixed: GND to Brown, Pin 9 to Orange) -->
+                            <!-- GND (Brown Wire) -->
+                            <path class="wiring-svg-line" d="M 75 245 Q 150 245, 150 145 L 300 145" style="stroke: #8d6e63;" />
+                            
+                            <!-- 5V (Red Wire) -->
+                            <path class="wiring-svg-line" d="M 105 245 Q 170 245, 170 165 L 300 165" style="stroke: #e74c3c;" />
+                            
+                            <!-- Signal/Pin 9 (Orange Wire) -->
+                            <path class="wiring-svg-line wire-pulse" d="M 135 245 Q 190 245, 190 185 L 300 185" style="stroke: #f39c12;" />
+                        </svg>
+                    </div>
+                    <div class="wiring-instructions">
+                        <h3>Connection Steps</h3>
+                        <div class="wiring-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>Ground (GND)</strong>
+                                <p>Connect the <strong>Brown Wire</strong> (GND) on the servo to any <strong>GND</strong> pin on the Arduino.</p>
+                            </div>
+                        </div>
+                        <div class="wiring-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>Power (VCC)</strong>
+                                <p>Connect the <strong>Red Wire</strong> (VCC) on the servo to the <strong>5V</strong> pin on the Arduino.</p>
+                            </div>
+                        </div>
+                        <div class="wiring-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>Signal (PWM)</strong>
+                                <p>Connect the <strong>Orange/Yellow Wire</strong> (Signal) to a PWM pin. In our code, this is <strong>Pin ~9</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Code Section -->
+        <section id="code-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Simple to control.</h2>
+                <div class="code-wrapper scroll-animate">
+                    <button class="copy-code-btn" id="copy-code">Copy</button>
+                    <!-- NEW: Added line-numbers and language-cpp classes -->
+                    <pre class="line-numbers"><code id="code-block" class="language-cpp"><span class="comment">// Arduino "Sweep" Example</span>
+#include <span class="string">&lt;Servo.h&gt;</span>
+
+<span class="token keyword">Servo</span> myservo;  <span class="comment">// create servo object to control a servo</span>
+
+<span class="token keyword">int</span> pos = <span class="token number">0</span>;    <span class="comment">// variable to store the servo position</span>
+
+<span class="token keyword">void</span> <span class="token function">setup</span>() {
+  myservo.<span class="token function">attach</span>(<span class="token number">9</span>);  <span class="comment">// attaches the servo on pin 9</span>
+}
+
+<span class="token keyword">void</span> <span class="token function">loop</span>() {
+  <span class="token keyword">for</span> (pos = <span class="token number">0</span>; pos <= <span class="token number">180</span>; pos += <span class="token number">1</span>) { <span class="comment">// 0 to 180 degrees</span>
+    myservo.<span class="token function">write</span>(pos); <span class="comment">// tell servo to go to position</span>
+    <span class="token function">delay</span>(<span class="token number">15</span>);       <span class="comment">// waits 15ms for the servo to reach</span>
+  }
+  <span class="token keyword">for</span> (pos = <span class="token number">180</span>; pos >= <span class="token number">0</span>; pos -= <span class="token number">1</span>) { <span class="comment">// 180 to 0 degrees</span>
+    myservo.<span class="token function">write</span>(pos);
+    <span class="token function">delay</span>(<span class="token number">15</span>);
+  }
+}</code></pre>
+                </div>
+            </div>
+        </section>
+        
+        <!-- START NEW SECTION: Potentiometer Control -->
+        <section id="pot-control-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Knob Control (Potentiometer)</h2>
+                <!-- Inline style to ensure it looks okay without external CSS changes -->
+                <p style="text-align: center; max-width: 600px; margin: 0 auto 2rem auto; opacity: 0.8; color: #94A3B8;">
+                    Use a potentiometer to manually control the servo angle. As you turn the knob, the analog value is mapped to a degree between 0 and 180.
+                </p>
+                
+                <div class="wiring-content scroll-animate" style="margin-bottom: 2rem;">
+                     <!-- Styles for this specific SVG -->
+                    <style>
+                        #pot-wiring-svg .wiring-text { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 10px; fill: #F1F5F9; }
+                        #pot-wiring-svg .wiring-label { font-family: 'Space Grotesk', sans-serif; font-size: 8px; fill: #94A3B8; }
+                        #pot-wiring-svg .board { fill: #00979D; stroke: #00797C; stroke-width: 1; rx: 8; }
+                        #pot-wiring-svg .servo { fill: #007AFF; stroke: #3a8bc1; stroke-width: 1; rx: 8; }
+                        #pot-wiring-svg .pin { fill: #1E293B; stroke: rgba(255,255,255,0.1); }
+                        #pot-wiring-svg .pot-body { fill: #9ca3af; stroke: #6b7280; stroke-width: 1; }
+                        #pot-wiring-svg .pot-knob { fill: #1f2937; stroke: #000; }
+                        #pot-wiring-svg .wire { fill: none; stroke-width: 3; stroke-linecap: round; opacity: 0.8; }
+                    </style>
+                    <div class="wiring-diagram">
+                        <svg id="pot-wiring-svg" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+                            <!-- SVG Content -->
+                             <!-- Arduino -->
+                            <rect class="board" x="20" y="50" width="150" height="200" />
+                            <text class="wiring-text" x="55" y="75">Arduino Uno</text>
+                            
+                            <!-- Pins -->
+                            <rect class="pin" x="70" y="240" width="10" height="10" /> <text class="wiring-label" x="85" y="250">GND</text>
+                            <rect class="pin" x="100" y="240" width="10" height="10" /> <text class="wiring-label" x="115" y="250">5V</text>
+                            <rect class="pin" x="150" y="240" width="10" height="10" /> <text class="wiring-label" x="165" y="250">~9</text>
+                            <rect class="pin" x="150" y="220" width="10" height="10" /> <text class="wiring-label" x="165" y="230">A0</text>
+
+                            <!-- Servo -->
+                            <rect class="servo" x="350" y="50" width="80" height="100" />
+                            <text class="wiring-text" x="370" y="70">Servo</text>
+                            <rect class="pin" x="350" y="90" width="10" height="10" style="fill: #8d6e63;" />
+                            <rect class="pin" x="350" y="110" width="10" height="10" style="fill: #e74c3c;" />
+                            <rect class="pin" x="350" y="130" width="10" height="10" style="fill: #f39c12;" />
+
+                            <!-- Potentiometer -->
+                            <g transform="translate(350, 200)">
+                                <rect class="pot-body" x="0" y="0" width="60" height="60" rx="5" />
+                                <circle class="pot-knob" cx="30" cy="30" r="15" />
+                                <rect class="pin" x="5" y="60" width="5" height="15" /> 
+                                <rect class="pin" x="27.5" y="60" width="5" height="15" /> 
+                                <rect class="pin" x="50" y="60" width="5" height="15" /> 
+                                <text class="wiring-text" x="15" y="-10">Pot</text>
+                            </g>
+
+                            <!-- Wires -->
+                            <!-- Servo GND (Brown) to Arduino GND -->
+                            <path class="wire" d="M 75 245 Q 120 300, 350 95" style="stroke: #8d6e63;" />
+                            
+                            <!-- Servo VCC (Red) to Arduino 5V -->
+                            <path class="wire" d="M 105 245 Q 220 280, 350 115" style="stroke: #e74c3c;" />
+                            
+                            <!-- Servo Signal (Orange) to Pin 9 -->
+                            <path class="wire" d="M 155 245 Q 250 180, 350 135" style="stroke: #f39c12;" />
+
+                            <!-- Pot Leg 1 to 5V (Shared) -->
+                            <path class="wire" d="M 105 245 Q 220 300, 355 275" style="stroke: #e74c3c; stroke-dasharray: 4;" />
+                            
+                            <!-- Pot Leg 3 to GND (Shared) -->
+                            <path class="wire" d="M 75 245 Q 200 320, 400 275" style="stroke: #8d6e63; stroke-dasharray: 4;" />
+
+                            <!-- Pot Wiper (Middle) to A0 (Yellow wire for clarity) -->
+                            <path class="wire" d="M 155 225 Q 280 200, 377.5 275" style="stroke: #FDE047;" />
+                        </svg>
+                    </div>
+
+                    <!-- NEW: Connection Steps for Potentiometer -->
+                    <div class="wiring-instructions">
+                        <h3>Potentiometer Wiring Steps</h3>
+                        <div class="wiring-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <strong>Potentiometer Power</strong>
+                                <p>Connect the two <strong>outer legs</strong> of the potentiometer to <strong>5V</strong> and <strong>GND</strong>. (Polarity doesn't matter for the outer legs).</p>
+                            </div>
+                        </div>
+                        <div class="wiring-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <strong>Signal (Wiper)</strong>
+                                <p>Connect the <strong>middle leg</strong> (wiper) of the potentiometer to Analog Pin <strong>A0</strong> on the Arduino.</p>
+                            </div>
+                        </div>
+                        <div class="wiring-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <strong>Servo Connection</strong>
+                                <p>Keep the servo connected as before: <strong>Red</strong> to 5V, <strong>Brown</strong> to GND, and <strong>Signal</strong> to Pin <strong>~9</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code Block -->
+                <div class="code-wrapper scroll-animate">
+                    <button class="copy-code-btn" id="copy-code-pot">Copy</button>
+                    <pre class="line-numbers"><code id="code-block-pot" class="language-cpp">#include &lt;Servo.h&gt;
+Servo myservo;
+int pot = A0;  // Potentiometer connected to A0
+int x;
+int value;
+
+void setup()
+{
+    pinMode(A0, INPUT);
+    myservo.attach(9);
+}
+
+void loop()
+{
+    x = analogRead(pot);
+    // Map the analog value (0-662 in specific case, usually 0-1023) 
+    // to the servo angle (0-180)
+    value = map(x, 0, 662, 0, 180);
+    myservo.write(value);
+}</code></pre>
+                </div>
+            </div>
+        </section>
+        <!-- END NEW SECTION -->
+
+        <!-- Common Mistakes Section -->
+        <section id="common-mistakes-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Common Mistakes</h2>
+                <div class="troubleshooting-accordion">
+                    <details class="trouble-item scroll-animate">
+                        <summary>Powering servo from Arduino's 5V Pin</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Problem:</strong> While okay for one tiny servo, powering servos directly from the Arduino's `5V` pin is unreliable. Servos can draw a lot of current (especially at stall), which can cause the Arduino to reset or "brownout".</p>
+                                <p><strong>Solution:</strong> Always use a separate, external power supply (like a 4xAA battery pack or a 5V/2A wall adapter) for your servos. Connect the external supply's Ground (GND) to the Arduino's GND to create a common ground.</p>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <details class="trouble-item scroll-animate">
+                        <summary>Exceeding Torque or Speed Limits</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Problem:</strong> Trying to make the servo move faster than its rated speed (e.g., `delay(1)`) or putting too much physical load on it can cause it to overheat, jitter, or strip its gears.</p>
+                                <p><strong>Solution:</strong> Respect the `delay()` in your code to give the servo time to reach its position. Choose a servo with a torque rating that is appropriate for your project (e.g., a metal-gear, high-torque servo for a robot arm).</p>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="trouble-item scroll-animate">
+                        <summary>Using a Non-PWM Pin</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Problem:</strong> The `Servo.h` library is clever and can use almost any pin, but you may get more stable performance by using a dedicated PWM pin (marked with a `~` on an Arduino Uno).</p>
+                                <p><strong>Solution:</strong> If you experience jitter, try moving the signal wire to a PWM pin like `~9`, `~10`, `~5`, etc., and update your `myservo.attach()` call accordingly.</p>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- Troubleshooting Guide Section -->
+        <section id="troubleshooting-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Troubleshooting Guide</h2>
+                <div class="troubleshooting-accordion">
+                    <details class="trouble-item scroll-animate">
+                        <summary>Servo is jittering or shaking</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Causes:</strong></p>
+                                <ul>
+                                    <li>Insufficient power supply (see Common Mistakes)</li>
+                                    <li>Electrical noise on signal line</li>
+                                    <li>Defective potentiometer (internal damage)</li>
+                                </ul>
+                                <p><strong>Solutions:</strong></p>
+                                <ul>
+                                    <li>Use separate power supply for servos</li>
+                                    <li>Add a 100μF - 470μF capacitor across the servo's power (VCC) and ground (GND) pins.</li>
+                                    <li>Keep signal wires short and away from power wires</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <details class="trouble-item scroll-animate">
+                        <summary>Servo not moving at all</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Check:</strong></p>
+                                <ul>
+                                    <li>All three wires (VCC, GND, Signal) are correctly connected.</li>
+                                    <li>GND (Brown) and VCC (Red) are not reversed.</li>
+                                    <li>Your code is running (add `Serial.println()` debugging).</li>
+                                    <li>Your external power supply is on and providing 4.8V - 6V.</li>
+                                    <li>You have a common ground between the Arduino and the external supply.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <details class="trouble-item scroll-animate">
+                        <summary>Limited range of motion (not 180°)</summary>
+                        <div class="trouble-content">
+                            <div class="trouble-content-inner">
+                                <p><strong>Solutions:</strong></p>
+                                <ul>
+                                    <li>Some servos are not designed for a full 180°. Check your model number.</li>
+                                    <li>Adjust min/max pulse width in your code: <code>myservo.attach(pin, 500, 2500)</code>. The default is (544, 2400). Experiment to find your servo's true limits.</li>
+                                    <li>Check for mechanical obstructions.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Interactive Quiz/Exercise Section -->
+        <section id="exercises-section">
+            <div class="container">
+                <h2 class="scroll-animate animated-gradient">Test Your Knowledge</h2>
+                
+                <div class="exercise-card scroll-animate">
+                    <h3>Exercise 1: Calculate Pulse Width</h3>
+                    <p>If you want to move the servo to 45°, what pulse width (in ms) should you send? (Use the 1ms=0°, 2ms=180° mapping)</p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex1-feedback', 'Incorrect. (45/180) + 1.0 = 1.25 ms')">1.50 ms</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex1-feedback', 'Correct! 0.25 ms offset + 1.0 ms base = 1.25 ms')">1.25 ms</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex1-feedback', 'Incorrect. Too low.')">0.45 ms</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex1-feedback', 'Incorrect. 2ms is 180°.')">2.00 ms</button>
+                    </div>
+                    <div id="ex1-feedback" class="feedback" style="display: none;"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex1-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex1-hint" class="hint hidden">
+                        Hint: The total range is 1.0 ms (from 1.0 to 2.0). What fraction of that range is 45°?
+                        <br>
+                        (45° / 180°) * 1.0ms + 1.0ms
+                    </div>
+                    <canvas class="confetti-canvas"></canvas>
+                </div>
+        
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.2s;">
+                    <h3>Exercise 2: Duty Cycle Calculation</h3>
+                    <p>A servo receives a 1.75ms pulse every 20ms. What is the duty cycle percentage?</p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex2-feedback', 'Incorrect. (1.75/20)*100')">17.5%</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex2-feedback', 'Correct! (1.75 / 20) * 100 = 8.75%')">8.75%</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex2-feedback', 'Incorrect. Too low.')">5.0%</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex2-feedback', 'Incorrect.')">10.0%</button>
+                    </div>
+                    <div id="ex2-feedback" class="feedback" style="display: none;"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex2-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex2-hint" class="hint hidden">
+                        Hint: Duty Cycle = (pulse_width / period) × 100
+                    </div>
+                    <canvas class="confetti-canvas"></canvas>
+                </div>
+        
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.4s;">
+                    <h3>Exercise 3: Power Requirements</h3>
+                    <p>You have 4 servos running simultaneously at 6V, each drawing 200mA on average. What is the *minimum* total current capacity your power supply needs?</p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex3-feedback', 'Correct! 4 * 200mA = 800mA.')">800 mA</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex3-feedback', 'Incorrect. That is for 1 servo.')">200 mA</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex3-feedback', 'Incorrect. 600mA is not enough.')">600 mA</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex3-feedback', 'Incorrect. 4A is safe but 800mA is the theoretical minimum.')">4 A</button>
+                    </div>
+                    <div id="ex3-feedback" class="feedback" style="display: none;"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex3-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex3-hint" class="hint hidden">
+                        Hint: Total current = number of servos × current per servo. (Remember, stall current is even higher!)
+                    </div>
+                    <canvas class="confetti-canvas"></canvas>
+                </div>
+        
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.6s;">
+                    <h3>Exercise 4: PWM Frequency</h3>
+                    <p>If the PWM period (total cycle time) is 20ms, what is the frequency in Hz?</p>
+                    <div class="quiz-options">
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex4-feedback', 'Incorrect. 1/0.02 = 50')">20 Hz</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, true, 'ex4-feedback', 'Correct! Frequency = 1 / 0.020s = 50 Hz')">50 Hz</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex4-feedback', 'Incorrect.')">100 Hz</button>
+                        <button class="quiz-btn" onclick="checkAnswer(this, false, 'ex4-feedback', 'Incorrect.')">60 Hz</button>
+                    </div>
+                    <div id="ex4-feedback" class="feedback" style="display: none;"></div>
+                    <button class="hint-btn" onclick="document.getElementById('ex4-hint').classList.toggle('hidden')">Show Hint</button>
+                    <div id="ex4-hint" class="hint hidden">
+                        Hint: Frequency = 1 / period (in seconds). First, convert 20ms to seconds.
+                    </div>
+                    <canvas class="confetti-canvas"></canvas>
+                </div>
+        
+                <!-- Coding Challenge -->
+                <div class="exercise-card scroll-animate" style="animation-delay: 0.8s;">
+                    <h3>Coding Challenge</h3>
+                    <p>Write *only* the `for` loop (not the full program) to make a servo sweep from 0° to 180° in 5-degree increments, with a 100ms delay between steps. Then, hit "Run My Code" to see it on the demo!</p>
+                    <textarea id="code-answer" rows="10" placeholder="for (let pos = 0; pos <= 180; pos += 5) {
+  // your code here
+}"></textarea>
+                    <!-- NEW: Updated button -->
+                    <button id="run-code-btn">Run My Code</button>
+                    <div id="code-feedback" class="feedback" style="display: none;"></div>
+                    <canvas class="confetti-canvas"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div>© <strong>ServoLab</strong> — Built for learning</div>
+        <!-- NEW: Progress Bar -->
+        <div id="progress-bar-container">
+            <span id="progress-bar-label">Learning Progress: 0/5</span>
+            <div id="progress-bar">
+                <div id="progress-bar-inner"></div>
+            </div>
+        </div>
+        <nav>
+          <a href="#features-section">Features</a>
+          <a href="#comparison-section">Compare</a>
+          <a href="#troubleshooting-section">Help</a>
+        </nav>
+      </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" title="Back to top" style="position: fixed; bottom: 2rem; right: 2rem; width: 50px; height: 50px; border-radius: 50%; background: #38BDF8; border: none; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 1000; /* cursor: auto; */ /* REMOVED */">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </button>
+    
+    <!-- NEW: Link to external script -->
+    <script src="script.js" type="module"></script>
+
+    <!-- Quiz Logic Script -->
+    <script>
+        // Added simple copy functionality for the new section since we can't edit external JS
+        const btnPot = document.getElementById('copy-code-pot');
+        if(btnPot) {
+            btnPot.onclick = function() {
+                const pre = document.getElementById('code-block-pot');
+                if(pre) {
+                    navigator.clipboard.writeText(pre.textContent);
+                    const original = this.innerText;
+                    this.innerText = "Copied!";
+                    setTimeout(() => this.innerText = original, 2000);
+                }
+            }
+        }
+
+        function checkAnswer(btn, isCorrect, feedbackId, msg) {
+            const feedback = document.getElementById(feedbackId);
+            const parent = btn.parentElement;
+            
+            // Disable ALL buttons in this group immediately (Strict single try)
+            const buttons = parent.querySelectorAll('.quiz-btn');
+            buttons.forEach(b => b.disabled = true);
+            
+            if (isCorrect) {
+                btn.classList.add('correct');
+                feedback.textContent = msg;
+                feedback.style.color = '#81C784';
+                feedback.style.display = 'block';
+                
+                // Trigger confetti
+                if (window.confetti) {
+                    const rect = btn.getBoundingClientRect();
+                    const x = (rect.left + rect.width / 2) / window.innerWidth;
+                    const y = (rect.top + rect.height / 2) / window.innerHeight;
+                    confetti({
+                        particleCount: 60,
+                        spread: 70,
+                        origin: { x: x, y: y },
+                        colors: ['#76FF03', '#00E5FF', '#FFFFFF']
+                    });
+                }
+                
+                // Update progress (simple simulation)
+                const progressInner = document.getElementById('progress-bar-inner');
+                if (progressInner) {
+                    const currentWidth = parseFloat(progressInner.style.width) || 0;
+                    if(currentWidth < 100) {
+                        const newWidth = Math.min(currentWidth + 20, 100);
+                        progressInner.style.width = newWidth + '%';
+                        document.getElementById('progress-bar-label').textContent = `Learning Progress: ${newWidth/20}/5`;
+                    }
+                }
+                
+            } else {
+                btn.classList.add('incorrect');
+                feedback.textContent = msg; // Display the feedback message even if incorrect
+                feedback.style.color = '#E57373';
+                feedback.style.display = 'block';
+                
+                // No retry logic here since buttons are already disabled above
+            }
+        }
+    </script>
+</body>
+</html>

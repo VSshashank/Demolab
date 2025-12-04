@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Portal - Select Module</title>
+
+    <!-- Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Background Noise Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/3.0.0/simplex-noise.min.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="landing_style.css">
+</head>
+<body>
+
+    <canvas id="background-blobs"></canvas>
+
+    <div class="portal-container">
+        <header class="portal-header">
+            <div class="logo">System Control Lab</div>
+            <h1>Choose your demonstration.</h1>
+            <p>Select a module to begin the interactive simulation.</p>
+        </header>
+
+        <div class="cards-wrapper">
+            <!-- Servo Card -->
+            <a href="index-1.html" class="module-card servo-card">
+                <div class="card-bg-glow"></div>
+                <div class="card-content">
+                    <div class="icon-circle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"></path><path d="M8.5 8.5v.01"></path><path d="M16 12l-2-2"></path><path d="M12 16l-2-2"></path></svg>
+                    </div>
+                    <h2>ServoLab</h2>
+                    <p>Motion Control & PWM</p>
+                    <div class="features-list">
+                        <span><span class="dot"></span>Servo Mechanics</span>
+                        <span><span class="dot"></span>PWM Visualization</span>
+                        <span><span class="dot"></span>Code Sandbox</span>
+                    </div>
+                    <span class="enter-btn">Launch Demo &rarr;</span>
+                </div>
+            </a>
+
+            <!-- Temp Card -->
+            <a href="temp.html" class="module-card temp-card">
+                <div class="card-bg-glow"></div>
+                <div class="card-content">
+                    <div class="icon-circle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/><path d="M10 4v0"/></svg>
+                    </div>
+                    <h2>TempView</h2>
+                    <p>Sensing & Environment</p>
+                    <div class="features-list">
+                        <span><span class="dot"></span>DHT11 Logic</span>
+                        <span><span class="dot"></span>I2C LCD Sim</span>
+                        <span><span class="dot"></span>Live Readings</span>
+                    </div>
+                    <span class="enter-btn">Launch Demo &rarr;</span>
+                </div>
+            </a>
+        </div>
+
+        <footer>
+            <p>Running on Localhost • Verified Secure Connection</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Background Animation Script ---
+        const canvas = document.getElementById('background-blobs');
+        const ctx = canvas.getContext('2d');
+        let noise;
+
+        try {
+            noise = new SimplexNoise();
+        } catch (e) {
+            noise = { noise2D: () => 0 }; // Fallback
+        }
+
+        let blobs = [];
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+        class Blob {
+            constructor() {
+                this.init();
+            }
+            init() {
+                const dpr = window.devicePixelRatio || 1;
+                this.w = canvas.width / dpr;
+                this.h = canvas.height / dpr;
+                this.x = Math.random() * this.w;
+                this.y = Math.random() * this.h;
+                this.r = (Math.random() * 0.3 + 0.2) * Math.min(this.w, this.h);
+                // Randomly choose between Blue (Servo) and Green (Temp) themes
+                this.isBlue = Math.random() > 0.5;
+                this.color = this.isBlue 
+                    ? `rgba(0, 122, 255, ${Math.random() * 0.3 + 0.2})`
+                    : `rgba(118, 255, 3, ${Math.random() * 0.15 + 0.1})`;
+                this.t = Math.random() * 1000;
+                this.tInc = Math.random() * 0.002 + 0.001;
+                this.xOff = Math.random() * 1000;
+                this.yOff = Math.random() * 1000;
+            }
+            draw() {
+                const points = [];
+                const segments = 20;
+                for (let i = 0; i < segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    const r = this.r * (1 + 0.25 * noise.noise2D(Math.cos(angle) + this.xOff + this.t, Math.sin(angle) + this.yOff + this.t));
+                    points.push({
+                        x: this.x + r * Math.cos(angle),
+                        y: this.y + r * Math.sin(angle)
+                    });
+                }
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < segments; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                this.t += this.tInc;
+            }
+        }
+
+        function init() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
+            if(!isMobile) {
+                blobs = [new Blob(), new Blob(), new Blob()];
+            }
+        }
+
+        function animate() {
+            if(!isMobile) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                blobs.forEach(b => b.draw());
+            }
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', init);
+        init();
+        animate();
+    </script>
+</body>
+</html>

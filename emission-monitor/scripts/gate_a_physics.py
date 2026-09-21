@@ -73,10 +73,14 @@ def main() -> int:
         lph = physics.fuel_gps_to_lph(idle.fuel_gps_true, "DIESEL")
         co2_kg_hr = idle.co2_gps_true * 3600.0 / 1000.0
         spec_gps = config.VEHICLE_SPECS[vt]["idle_fuel_gps"]
-        ok = abs(idle.fuel_gps_true - spec_gps) < 1e-9 and idle.regime == "IDLE"
+        # Not an exact match any more: the Willans intercept rises with engine
+        # speed, and idle rpm sits a few rpm above 750 once the accessories are
+        # loaded. Within 1.5 % of the configured constant is the correct test.
+        ok = abs(idle.fuel_gps_true - spec_gps) / spec_gps < 0.015 and idle.regime == "IDLE"
         failures += 0 if ok else 1
         print(f"    {vt:<10} {idle.fuel_gps_true:.3f} g/s = {lph:.2f} L/h = "
-              f"{co2_kg_hr:.2f} kg CO2/h   [{PASS if ok else FAIL}]")
+              f"{co2_kg_hr:.2f} kg CO2/h  @ {idle.rpm} rpm, lambda {idle.lambda_excess_air:.2f}"
+              f"   [{PASS if ok else FAIL}]")
 
     print(f"    {NOTE} the build spec's prose says 0.45 g/s '-> ~0.5 L/hr'. That arithmetic")
     print("         does not hold: 0.45 g/s over an hour is 1620 g, and 1620 g of diesel")
@@ -156,6 +160,56 @@ def main() -> int:
     ok = 18.0 <= h_econ <= 38.0
     failures += 0 if ok else 1
     print(f"    16 t rigid in the published band                 [{PASS if ok else FAIL}]")
+
+    # ------------------------------------------------------------ leak check
+    # A permanent guard, and it is generic on purpose.
+    #
+    # Two separate versions of this simulator handed the models a clean readout
+    # of the quantity they were supposed to estimate. First engine_load_pct was
+    # computed straight from engine power (one straight line explained 99.6 % of
+    # the clean fuel rate). Then throttle_pct was, and it took 73 % of the
+    # feature importance. Checking only the feature that failed last time would
+    # have missed the second one, so every feature is checked.
+    #
+    # A high score here does not mean the model is good. It means the dataset is
+    # an algebra exercise and any accuracy figure from it is worthless.
+    print("\n[8] Single-feature leakage - can any one signal reconstruct the target?")
+    import random as _random
+    from backend.preprocess import StreamPreprocessor, Rejection
+    from simulator.vehicle import Vehicle
+    from simulator.scenarios import ScenarioBook
+
+    fleet = [Vehicle.randomized(i, 99) for i in range(12)]
+    pre, book = StreamPreprocessor(), ScenarioBook()
+    rows, targets = [], []
+    for _ in range(900):
+        for v in fleet:
+            res = pre.process(v.step(1.0, book))
+            if isinstance(res, Rejection):
+                continue
+            rows.append(res.feature_row())
+            targets.append(v.last_truth.fuel_rate_gps_true)
+
+    def r2_of(xs, ys):
+        n = len(xs)
+        mx, my = sum(xs) / n, sum(ys) / n
+        sxy = sum((a - mx) * (b - my) for a, b in zip(xs, ys))
+        sxx = sum((a - mx) ** 2 for a in xs)
+        syy = sum((b - my) ** 2 for b in ys)
+        return (sxy ** 2 / (sxx * syy)) if sxx > 0 and syy > 0 else 0.0
+
+    scores = sorted(
+        ((f, r2_of([r[f] for r in rows], targets)) for f in config.FEATURE_COLUMNS),
+        key=lambda kv: -kv[1])
+    for feature, r2 in scores[:6]:
+        flag = ROSE if r2 >= 0.90 else (AMBER if r2 >= 0.75 else "")
+        print(f"    {feature:<26}{flag}{r2:6.3f}{RESET if flag else ''}")
+    worst_feature, worst_r2 = scores[0]
+    print(f"    checked {len(scores)} features over {len(rows):,} samples")
+    ok = worst_r2 < 0.90
+    failures += 0 if ok else 1
+    print(f"    strongest single feature is {worst_feature} at R2 {worst_r2:.3f}, "
+          f"expect < 0.90   [{PASS if ok else FAIL}]")
 
     print("\n" + "=" * 74)
     if failures:

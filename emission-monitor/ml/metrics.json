@@ -1,0 +1,197 @@
+{
+  "generated_at": "2026-09-21T17:31:40.555739+00:00",
+  "dataset": {
+    "rows": 716424,
+    "trips": 299,
+    "train": 511869,
+    "val": 101072,
+    "test": 103483,
+    "train_trips": 209,
+    "val_trips": 45,
+    "test_trips": 45,
+    "idle_fraction": 0.17696084999944167
+  },
+  "split_strategy": "GroupShuffleSplit on trip_id (prevents temporal leakage)",
+  "split_comparison": {
+    "grouped_r2": 0.984525,
+    "random_row_split_r2": 0.992052,
+    "inflation": 0.007527,
+    "note": "A random row split on 1 Hz data puts second n in train and second n+1 in test. The gap between these two numbers is the size of that mistake."
+  },
+  "gate_b": {
+    "verdict": "PASS",
+    "expected_band": [
+      0.93,
+      0.98
+    ]
+  },
+  "target": "fuel_rate_gps_true",
+  "target_units": "g/s of fuel",
+  "features": [
+    "speed_kmh",
+    "accel_ms2",
+    "rpm",
+    "engine_load_pct",
+    "throttle_pct",
+    "coolant_temp_c",
+    "gvw_kg",
+    "load_ratio",
+    "vehicle_type_enc",
+    "fuel_type_enc",
+    "rolling_mean_speed_30s",
+    "rolling_std_accel_30s",
+    "idle_flag",
+    "stop_go_ratio_60s"
+  ],
+  "withheld_features": [
+    "road grade",
+    "wind",
+    "vehicle mass constants",
+    "driveline efficiency",
+    "bsfc"
+  ],
+  "models": [
+    {
+      "name": "Linear Regression",
+      "mae": 0.479398,
+      "rmse": 0.705989,
+      "mse": 0.49842,
+      "r2": 0.875342,
+      "val_r2": 0.888966,
+      "train_seconds": 0.26,
+      "inference_ms_per_row": 0.00086,
+      "note": ""
+    },
+    {
+      "name": "Ridge",
+      "mae": 0.479391,
+      "rmse": 0.705994,
+      "mse": 0.498428,
+      "r2": 0.87534,
+      "val_r2": 0.888967,
+      "train_seconds": 0.18,
+      "inference_ms_per_row": 0.00013,
+      "note": ""
+    },
+    {
+      "name": "Lasso",
+      "mae": 0.478331,
+      "rmse": 0.705742,
+      "mse": 0.498072,
+      "r2": 0.875429,
+      "val_r2": 0.888842,
+      "train_seconds": 0.79,
+      "inference_ms_per_row": 0.00068,
+      "note": ""
+    },
+    {
+      "name": "SVR (RBF)",
+      "mae": 0.172647,
+      "rmse": 0.312419,
+      "mse": 0.097606,
+      "r2": 0.975588,
+      "val_r2": 0.978967,
+      "train_seconds": 29.66,
+      "inference_ms_per_row": 0.39446,
+      "note": "(fit on 20,000)"
+    },
+    {
+      "name": "MLP (64,32)",
+      "mae": 0.162678,
+      "rmse": 0.279778,
+      "mse": 0.078276,
+      "r2": 0.980423,
+      "val_r2": 0.980423,
+      "train_seconds": 43.61,
+      "inference_ms_per_row": 0.00042,
+      "note": ""
+    },
+    {
+      "name": "Random Forest",
+      "mae": 0.145671,
+      "rmse": 0.257195,
+      "mse": 0.066149,
+      "r2": 0.983456,
+      "val_r2": 0.983845,
+      "train_seconds": 124.41,
+      "inference_ms_per_row": 0.01715,
+      "note": ""
+    },
+    {
+      "name": "XGBoost",
+      "mae": 0.142329,
+      "rmse": 0.248741,
+      "mse": 0.061872,
+      "r2": 0.984525,
+      "val_r2": 0.984708,
+      "train_seconds": 4.64,
+      "inference_ms_per_row": 0.00289,
+      "note": ""
+    }
+  ],
+  "best_model": "XGBoost",
+  "feature_importance": [
+    {
+      "feature": "throttle_pct",
+      "importance": 0.547344982624054
+    },
+    {
+      "feature": "gvw_kg",
+      "importance": 0.11797601729631424
+    },
+    {
+      "feature": "idle_flag",
+      "importance": 0.11477465182542801
+    },
+    {
+      "feature": "engine_load_pct",
+      "importance": 0.1122090145945549
+    },
+    {
+      "feature": "rpm",
+      "importance": 0.05347120389342308
+    },
+    {
+      "feature": "vehicle_type_enc",
+      "importance": 0.013334869407117367
+    },
+    {
+      "feature": "speed_kmh",
+      "importance": 0.013165074400603771
+    },
+    {
+      "feature": "accel_ms2",
+      "importance": 0.00861010979861021
+    },
+    {
+      "feature": "fuel_type_enc",
+      "importance": 0.008286024443805218
+    },
+    {
+      "feature": "rolling_mean_speed_30s",
+      "importance": 0.005580850411206484
+    },
+    {
+      "feature": "rolling_std_accel_30s",
+      "importance": 0.0013826866634190083
+    },
+    {
+      "feature": "load_ratio",
+      "importance": 0.0013495307648554444
+    },
+    {
+      "feature": "stop_go_ratio_60s",
+      "importance": 0.0013009915128350258
+    },
+    {
+      "feature": "coolant_temp_c",
+      "importance": 0.0012139342725276947
+    }
+  ],
+  "environment": {
+    "python": "3.11.15",
+    "sklearn": "1.5.2",
+    "numpy": "1.26.4",
+    "pandas": "2.2.3"
+  }
+}

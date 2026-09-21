@@ -7,3 +7,8 @@ ml/dataset.csv
 data/emission_monitor.db
 data/emission_monitor.db-journal
 *.log
+
+# The Random Forest serialises to ~1 GB at the configured depth and nothing
+# loads it. Its metrics live in ml/metrics.json; the model the backend actually
+# scores with is xgboost_model.joblib, which is committed.
+ml/models/random_forest_model.joblib

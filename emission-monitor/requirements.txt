@@ -1,0 +1,14 @@
+# Pinned exactly. A joblib unpickle across scikit-learn versions fails loudly,
+# so the delivery machine must resolve to the same wheels that trained the models.
+fastapi==0.115.0
+uvicorn==0.30.6
+websockets==13.0.1
+python-multipart==0.0.9
+
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+xgboost==2.1.1
+joblib==1.4.2
+
+reportlab==4.2.5

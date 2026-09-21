@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+# The training CSV is ~200k rows / 40 MB. Models and metrics are committed
+# instead, because those are what the demo machine actually needs.
+ml/dataset.csv
+data/emission_monitor.db
+data/emission_monitor.db-journal
+*.log

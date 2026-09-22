@@ -250,9 +250,14 @@ class AnomalyEngine:
             if over:
                 st.spike_since = st.spike_since or ts
             else:
+                # Only a genuine return to normal clears the counter. This
+                # branch is reached only while the vehicle is moving, so a red
+                # light in the middle of a developing fault no longer restarts
+                # the clock: on the city loop that reset alone was enough to
+                # stop the rule ever firing.
                 st.spike_since = None
             # A single sample over the line is a gear change or a hill, not a
-            # fault. A driveline problem does not go away after two seconds.
+            # fault. A driveline problem does not go away after a few seconds.
             held = (ts - st.spike_since).total_seconds() if st.spike_since else 0.0
             if over and held >= config.EMISSION_SPIKE_SUSTAIN_S:
                 emit("EMISSION_SPIKE", "HIGH",

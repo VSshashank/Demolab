@@ -38,11 +38,15 @@ Read from live output by `python -m scripts.acceptance`, never estimated.
 | | Value | How it is measured |
 |---|---|---|
 | Test R2 | **0.9845** (XGBoost) | `GroupShuffleSplit` on `trip_id`, 70/15/15. A random row split on the same data reports 0.9921; the 0.0076 gap is the leakage that split would have hidden. |
-| Alert latency | **1.0 ms mean, 1.8 ms p95** | Anomalous packet received to alert delivered to the browser, against a 3000 ms target. |
-| Inference latency | **0.67 ms mean, 1.04 ms p95** | Per packet, timed inside `backend/inference.py`. |
+| Alert latency | **1.2 ms mean, 2.0 ms p95** | Anomalous packet received to alert delivered to the browser, against a 3000 ms target. Over 13 alerts. |
+| Inference latency | **0.88 ms mean, 1.31 ms p95** | Per packet, timed inside `backend/inference.py`, over 500 samples. |
 
 `/api/health` and `/api/metrics` serve all three live. Nothing in the frontend
 is hardcoded.
+
+All six scenarios raise their distinct alert. Injection to alert averages
+101 s across the six, because that figure is dominated by the rules' own dwell
+windows rather than by the system.
 
 On alert latency: the 3-second target is about the pipeline, not about the
 rules. `EXCESSIVE_IDLING` is defined as 180 seconds of continuous idling, so it
@@ -308,9 +312,10 @@ script tag pointing at a CDN, which the offline requirement forbids.
 ## Gates
 
 ```bash
-python -m scripts.gate_a_physics   # physics, before anything downstream
-python -m ml.train_models          # prints Gate B, the leakage check
-python -m scripts.acceptance       # end to end, against a running stack
+python -m scripts.gate_a_physics        # physics, before anything downstream
+python -m ml.train_models               # prints Gate B, the leakage check
+python -m scripts.acceptance            # end to end, against a running stack
+python -m scripts.acceptance --skip-slow # same, minus the long dwell windows
 ```
 
 Gate A checks constant-speed fuel economy against 7 to 14 L/100km, idle burn,
@@ -319,6 +324,15 @@ economy curve, an HGV cross-check, and single-feature leakage.
 
 Gate B fails the build if test R2 exceeds 0.995, which is treated as evidence
 of leakage rather than of a good model.
+
+The acceptance gate covers the live pipeline, all six scenarios, ISO 14083
+arithmetic on every row, and the shipped page itself: it walks every `src` and
+`href` in the served HTML plus every `url()` in the stylesheet and asserts each
+resolves. That last check exists because the dashboard once shipped with every
+asset 404ing while the API was entirely healthy (see below).
+
+Last full run: **every check passed**, six of six scenarios, 8/8 report rows
+reconciling.
 
 ## Known deviations from the build spec
 
@@ -337,7 +351,13 @@ Recorded rather than quietly accommodated.
 5. **Random Forest artifact.** Not committed. It serialises to about 1 GB at
    the configured depth, past GitHub's file limit, and nothing loads it; its
    metrics are in `metrics.json`.
-6. **Test R2 of 0.9845** sits just above the spec's nominal 0.93 to 0.98 band
+6. **Relative asset paths.** `index.html` originally referenced its assets
+   relatively while being served from `/` with the files mounted at `/static`.
+   Every stylesheet, script, font and icon returned 404 and the page rendered
+   as unstyled Times New Roman with no map and no charts, while every API
+   endpoint reported healthy. Found only by opening the page in a real
+   browser, which is now part of the verification rather than an afterthought.
+7. **Test R2 of 0.9845** sits just above the spec's nominal 0.93 to 0.98 band
    and well below Gate B's 0.995 failure threshold. Engine load, throttle and
    rpm are genuinely strong physical predictors of fuel rate once the air path
    is modelled correctly. The ablation is in the commit history: dropping

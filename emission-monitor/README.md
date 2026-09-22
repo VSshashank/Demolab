@@ -18,6 +18,10 @@ implementing a single adapter class; see `adapters/esp32_adapter.py`.
 
 ---
 
+`EXPLAINER.md` is a plain-language walkthrough of why the system is built this
+way, written for someone who has not read the code. Start there if you want the
+reasoning rather than the reference.
+
 ## Run it
 
 ```bash

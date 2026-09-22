@@ -223,7 +223,7 @@ main { flex: 1; min-height: 0; position: relative; }
 
 /* Grey graticule shown when tiles fail. The map must still be readable with
  * the wifi off: routes and markers stay on top of this. */
-.tile-fallback {
+#map.tile-fallback {
   background-color: #10192b;
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
@@ -244,11 +244,10 @@ main { flex: 1; min-height: 0; position: relative; }
 .pop-grid dt { color: var(--text-faint); font-size: 11px; }
 .pop-grid dd { margin: 0; font-family: var(--mono); font-size: 11.5px; text-align: right; }
 
-.map-legend {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  z-index: 620;
+/* Shared surface for the two things that sit over the map. The CO2 key is
+ * positioned by us; the offline notice is positioned by Leaflet's control
+ * layer, so the surface styling and the placement are kept apart. */
+.map-surface {
   background: rgba(7, 12, 23, 0.9);
   border: 1px solid var(--line);
   border-radius: var(--r);
@@ -259,7 +258,15 @@ main { flex: 1; min-height: 0; position: relative; }
   font-size: 10.5px;
   color: var(--text-dim);
 }
-.map-legend b { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); font-weight: 600; }
+.map-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 620;
+}
+.map-note { max-width: 190px; line-height: 1.4; }
+.map-note b { color: var(--warn) !important; }
+.map-legend b, .map-note b { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); font-weight: 600; }
 .legend-row { display: flex; align-items: center; gap: 7px; }
 .legend-swatch { width: 9px; height: 9px; border-radius: var(--r-pill); flex: none; }
 

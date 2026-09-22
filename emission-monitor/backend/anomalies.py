@@ -61,6 +61,7 @@ class _VehicleState:
     deviation_since: datetime | None = None
     co2_window: deque = field(
         default_factory=lambda: deque(maxlen=config.EMISSION_SPIKE_WINDOW_S))
+    spike_since: datetime | None = None
     last_fired: dict = field(default_factory=dict)  # type -> datetime
     route_key: str | None = None
     route_votes: dict = field(default_factory=dict)
@@ -227,27 +228,44 @@ class AnomalyEngine:
         # Compared against the vehicle's own recent behaviour, not a fleet
         # constant: a loaded 16 t rigid on a climb is not an anomaly, and the
         # same rate from a light van is.
+        # Only samples taken while the vehicle was actually moving go into the
+        # window. Comparing a cruising emission rate against a baseline that is
+        # half idling is apples to oranges: every vehicle pulling away from a
+        # junction clears three sigma, and the feed fills with spikes on
+        # vehicles that have nothing wrong with them. Observed directly: three
+        # false EMISSION_SPIKE alerts inside the first minute of a run.
+        moving = sample.speed_kmh > config.IDLE_SPEED_KMH
         window = st.co2_window
         # Baseline excludes the last EMISSION_SPIKE_BASELINE_LAG_S samples, so a
         # fault that has already been running for half a minute is still
         # compared against how this vehicle behaved before it started.
         baseline = list(window)[:-config.EMISSION_SPIKE_BASELINE_LAG_S] if \
             len(window) > config.EMISSION_SPIKE_BASELINE_LAG_S else []
-        if len(baseline) >= config.EMISSION_SPIKE_MIN_BASELINE_S:
+        if moving and len(baseline) >= config.EMISSION_SPIKE_MIN_BASELINE_S:
             mean = sum(baseline) / len(baseline)
             var = sum((v - mean) ** 2 for v in baseline) / (len(baseline) - 1)
             sigma = var ** 0.5
             threshold = mean + config.EMISSION_SPIKE_SIGMA * sigma
-            if sigma > 1e-6 and prediction.co2_gps > threshold and sample.speed_kmh > config.IDLE_SPEED_KMH:
+            over = sigma > 1e-6 and prediction.co2_gps > threshold
+            if over:
+                st.spike_since = st.spike_since or ts
+            else:
+                st.spike_since = None
+            # A single sample over the line is a gear change or a hill, not a
+            # fault. A driveline problem does not go away after two seconds.
+            held = (ts - st.spike_since).total_seconds() if st.spike_since else 0.0
+            if over and held >= config.EMISSION_SPIKE_SUSTAIN_S:
                 emit("EMISSION_SPIKE", "HIGH",
                      f"CO2 rate {prediction.co2_gps:.1f} g/s against this vehicle's own "
-                     f"{mean:.1f} g/s baseline, {(prediction.co2_gps - mean) / sigma:.1f} sigma out."
+                     f"{mean:.1f} g/s moving baseline for {_duration(held)}, "
+                     f"{(prediction.co2_gps - mean) / sigma:.1f} sigma out."
                      + (f" {sample.dtc_count} diagnostic code(s) present."
                         if sample.dtc_count else ""),
                      "Book an engine diagnostic. A sustained step change in emission rate "
                      "at normal load usually means the driveline, not the driver.",
                      prediction.co2_gps, threshold)
-        window.append(prediction.co2_gps)
+        if moving:
+            window.append(prediction.co2_gps)
 
         out.sort(key=lambda a: SEVERITY_ORDER[a["severity"]])
         return out

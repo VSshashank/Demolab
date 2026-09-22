@@ -110,6 +110,9 @@ EMISSION_SPIKE_WINDOW_S = 600
 # fire sooner because the baseline stays clean.
 EMISSION_SPIKE_BASELINE_LAG_S = 30
 EMISSION_SPIKE_MIN_BASELINE_S = 90
+# A gear change or a short climb clears three sigma for a second or two.
+# A driveline fault does not stop after two seconds.
+EMISSION_SPIKE_SUSTAIN_S = 8
 ALERT_COOLDOWN_SECONDS = 60
 
 # --------------------------------------------------------------------------

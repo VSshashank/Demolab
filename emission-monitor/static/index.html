@@ -9,15 +9,15 @@
      a CDN, because venue wifi fails and an unstyled dashboard is a dead demo.
      Map tiles are the one network resource, and app.js degrades to a grey
      graticule when they cannot be fetched. -->
-<link rel="stylesheet" href="vendor/leaflet.css">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="/static/vendor/leaflet.css">
+<link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 
 <header>
   <div class="brand">
     <span class="brand-mark">
-      <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-truck"></use></svg>
+      <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-truck"></use></svg>
       FleetCarbon
     </span>
     <span class="brand-sub">Real-Time Emission Monitoring</span>
@@ -26,7 +26,7 @@
   <!-- Permanent. Not dismissible, not conditional. Anyone looking at this
        screen must know the sensor layer is simulated without asking. -->
   <span class="pill pill-hil" id="source-pill" title="Telemetry originates from the hardware-in-the-loop simulator, not from vehicle hardware">
-    <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-flask"></use></svg>
+    <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-flask"></use></svg>
     <span id="source-pill-text">Data source: simulator (HIL)</span>
   </span>
 
@@ -52,13 +52,13 @@
 
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="live" aria-selected="true">
-    <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-map-pin"></use></svg>Live Monitor</button>
+    <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-map-pin"></use></svg>Live Monitor</button>
   <button role="tab" data-tab="models" aria-selected="false">
-    <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-chart-line"></use></svg>Models</button>
+    <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-chart-line"></use></svg>Models</button>
   <button role="tab" data-tab="trips" aria-selected="false">
-    <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-path"></use></svg>Trips &amp; Reports</button>
+    <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-path"></use></svg>Trips &amp; Reports</button>
   <button role="tab" data-tab="arch" aria-selected="false">
-    <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-stack"></use></svg>Architecture</button>
+    <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-stack"></use></svg>Architecture</button>
 </nav>
 
 <main>
@@ -78,14 +78,14 @@
     <div class="live-main">
       <div class="panel">
         <div class="panel-head">
-          <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-map-pin"></use></svg>
+          <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-map-pin"></use></svg>
           Fleet position
           <span class="spacer"></span>
           <button class="btn" id="btn-fit">Fit to fleet</button>
         </div>
         <div class="panel-body">
           <div id="map"></div>
-          <div class="map-legend">
+          <div class="map-legend map-surface">
             <b>CO2 rate</b>
             <div class="legend-row"><span class="legend-swatch" style="background:#10b981"></span>under 3 g/s</div>
             <div class="legend-row"><span class="legend-swatch" style="background:#f59e0b"></span>3 to 8 g/s</div>
@@ -96,7 +96,7 @@
 
       <div class="panel">
         <div class="panel-head">
-          <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-chart-line"></use></svg>
+          <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-chart-line"></use></svg>
           Predicted CO2 rate, last 5 minutes
           <span class="spacer"></span>
           <span class="conn-label">g/s per vehicle</span>
@@ -107,14 +107,14 @@
 
     <div class="panel" style="min-width:0">
       <div class="panel-head">
-        <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-warning"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-warning"></use></svg>
         Alerts
         <span class="spacer"></span>
         <button class="btn" id="btn-ack-all">Acknowledge all</button>
       </div>
       <div class="panel-body">
         <div class="alert-feed" id="alert-feed">
-          <div class="state"><svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-seal-check"></use></svg>
+          <div class="state"><svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-seal-check"></use></svg>
             <span class="state-title">No alerts</span>
             <span class="state-hint">Rules are running against every packet. Inject a scenario below to raise one on demand.</span>
           </div>
@@ -123,9 +123,9 @@
 
       <details class="scenarios" id="scenario-panel">
         <summary>
-          <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-traffic-cone"></use></svg>
+          <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-traffic-cone"></use></svg>
           Scenario injection
-          <svg class="icon chev" aria-hidden="true"><use href="vendor/icons.svg#i-warning"></use></svg>
+          <svg class="icon chev" aria-hidden="true"><use href="/static/vendor/icons.svg#i-warning"></use></svg>
         </summary>
         <div class="scenarios-body">
           <select class="sel" id="scenario-vehicle" aria-label="Target vehicle"><option value="">No vehicles yet</option></select>
@@ -179,7 +179,7 @@
     </p>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
       <button class="btn btn-primary" id="btn-export-csv">
-        <svg class="icon" aria-hidden="true" style="vertical-align:-2px;margin-right:5px"><use href="vendor/icons.svg#i-download-simple"></use></svg>Export ISO 14083 CSV</button>
+        <svg class="icon" aria-hidden="true" style="vertical-align:-2px;margin-right:5px"><use href="/static/vendor/icons.svg#i-download-simple"></use></svg>Export ISO 14083 CSV</button>
       <button class="btn" id="btn-export-pdf">Export PDF</button>
       <button class="btn" id="btn-refresh-trips">Refresh</button>
       <span class="conn-label" id="trips-count"></span>
@@ -190,7 +190,7 @@
   </div>
   <div class="section" id="trip-detail">
     <div class="state">
-      <svg class="icon" aria-hidden="true"><use href="vendor/icons.svg#i-path"></use></svg>
+      <svg class="icon" aria-hidden="true"><use href="/static/vendor/icons.svg#i-path"></use></svg>
       <span class="state-title">No operation selected</span>
       <span class="state-hint">Choose a row above to see its speed and CO2 profile, its ISO 14083 line, and any alerts raised during it.</span>
     </div>
@@ -291,8 +291,8 @@
 
 </main>
 
-<script src="vendor/leaflet.js"></script>
-<script src="vendor/chart.umd.js"></script>
-<script src="app.js"></script>
+<script src="/static/vendor/leaflet.js"></script>
+<script src="/static/vendor/chart.umd.js"></script>
+<script src="/static/app.js"></script>
 </body>
 </html>

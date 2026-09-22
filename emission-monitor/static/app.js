@@ -70,8 +70,11 @@ function initMap() {
     document.getElementById("map").classList.add("tile-fallback");
     const note = L.control({ position: "topright" });
     note.onAdd = () => {
-      const d = L.DomUtil.create("div", "map-legend");
-      d.innerHTML = "<b>Offline</b>map tiles unavailable, routes and vehicles still live";
+      // Leaflet positions its own controls, so this one takes the surface
+      // styling without the corner placement the CO2 key carries.
+      const d = L.DomUtil.create("div", "map-surface map-note");
+      d.innerHTML = "<b>Offline</b>Map tiles unavailable. Routes, vehicles and "
+                  + "every metric on this page are still live.";
       return d;
     };
     note.addTo(map);
@@ -250,7 +253,7 @@ function alertHtml(a, isNew) {
 function renderAlerts(newIds = new Set()) {
   const feed = $("alert-feed");
   if (!state.alerts.length) {
-    feed.innerHTML = `<div class="state"><svg class="icon"><use href="vendor/icons.svg#i-seal-check"></use></svg>
+    feed.innerHTML = `<div class="state"><svg class="icon"><use href="/static/vendor/icons.svg#i-seal-check"></use></svg>
       <span class="state-title">No alerts</span>
       <span class="state-hint">Rules are running against every packet. Inject a scenario below to raise one on demand.</span></div>`;
     renderAlertCount();
@@ -331,7 +334,10 @@ function connect() {
       }
       if (fresh.size) renderAlerts(fresh);
     }
-    $("hdr-inf").innerHTML = `${fmt(msg.inference_ms, 3)}<small>ms</small>`;
+    /* Deliberately NOT setting the header inference figure from this packet.
+       A single cold prediction reads 17 ms against a 0.7 ms mean, and a
+       headline number that jumps around is worse than one that updates every
+       two seconds. pollHealth() owns that field. */
     if (msg.source && msg.source !== "SIMULATOR") {
       $("source-pill-text").textContent = `Data source: ${msg.source}`;
     }
@@ -362,12 +368,14 @@ async function pollHealth() {
     const h = await r.json();
     $("hdr-pps").innerHTML = `${fmt(h.packets_per_second, 1)}<small>pkt/s</small>`;
     const inf = h.inference || {};
-    if (inf.inference_ms_mean) $("hdr-inf").innerHTML = `${fmt(inf.inference_ms_mean, 3)}<small>ms</small>`;
+    if (inf.inference_ms_mean) $("hdr-inf").innerHTML = `${fmt(inf.inference_ms_mean, 2)}<small>ms</small>`;
 
-    const al = h.alert_latency || {};
-    $("hdr-alat").innerHTML = al.mean_ms !== null && al.mean_ms !== undefined
-      ? `${fmt(al.mean_ms, 0)}<small>ms mean</small>`
-      : `<span style="font-size:11px;color:${C.faint}">no injections yet</span>`;
+    /* Pipeline latency, not injection-to-alert: the latter is dominated by each
+       rule's own dwell window and would read in minutes for the idling rule. */
+    const pl = h.pipeline_latency || {};
+    $("hdr-alat").innerHTML = pl.mean_ms !== null && pl.mean_ms !== undefined
+      ? `${fmt(pl.mean_ms, 2)}<small>ms mean</small>`
+      : `<span style="font-size:11px;color:${C.faint}">no alerts yet</span>`;
 
     if (!inf.model_loaded) {
       $("source-pill-text").textContent = "Data source: simulator (HIL), model not loaded";
@@ -481,7 +489,7 @@ async function loadModels() {
     loadScatter();
   } catch (e) {
     wrap.innerHTML = `<div class="state" data-tone="err">
-      <svg class="icon"><use href="vendor/icons.svg#i-warning-octagon"></use></svg>
+      <svg class="icon"><use href="/static/vendor/icons.svg#i-warning-octagon"></use></svg>
       <span class="state-title">Metrics not available</span>
       <span class="state-hint">${esc(e.message)}<br>Run <code>python -m ml.train_models</code> to produce ml/metrics.json.</span></div>`;
   }
@@ -566,7 +574,7 @@ async function loadTrips() {
     const { trips } = await r.json();
     $("trips-count").textContent = `${trips.length} operation${trips.length === 1 ? "" : "s"}`;
     if (!trips.length) {
-      wrap.innerHTML = `<div class="state"><svg class="icon"><use href="vendor/icons.svg#i-path"></use></svg>
+      wrap.innerHTML = `<div class="state"><svg class="icon"><use href="/static/vendor/icons.svg#i-path"></use></svg>
         <span class="state-title">No completed operations yet</span>
         <span class="state-hint">Trips appear as soon as the simulator has produced telemetry. Give it a few seconds.</span></div>`;
       return;
@@ -587,7 +595,7 @@ async function loadTrips() {
         <td class="n">${fmt(t.behaviour_score, 0)}</td></tr>`).join("")}
       </tbody></table>`;
   } catch (e) {
-    wrap.innerHTML = `<div class="state" data-tone="err"><svg class="icon"><use href="vendor/icons.svg#i-warning-octagon"></use></svg>
+    wrap.innerHTML = `<div class="state" data-tone="err"><svg class="icon"><use href="/static/vendor/icons.svg#i-warning-octagon"></use></svg>
       <span class="state-title">Could not load operations</span><span class="state-hint">${esc(e.message)}</span></div>`;
   }
 }
@@ -676,7 +684,7 @@ async function loadTripDetail(tripId) {
         `<div class="state"><span class="state-hint">No profile retained for this operation. Profiles are kept for trips seen by the running backend.</span></div>`;
     }
   } catch (e) {
-    box.innerHTML = `<div class="state" data-tone="err"><svg class="icon"><use href="vendor/icons.svg#i-warning-octagon"></use></svg>
+    box.innerHTML = `<div class="state" data-tone="err"><svg class="icon"><use href="/static/vendor/icons.svg#i-warning-octagon"></use></svg>
       <span class="state-title">Could not load that operation</span><span class="state-hint">${esc(e.message)}</span></div>`;
   }
 }

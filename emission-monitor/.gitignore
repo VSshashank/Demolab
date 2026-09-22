@@ -4,8 +4,10 @@ __pycache__/
 # The training CSV is ~200k rows / 40 MB. Models and metrics are committed
 # instead, because those are what the demo machine actually needs.
 ml/dataset.csv
-data/emission_monitor.db
-data/emission_monitor.db-journal
+# WAL mode creates -wal and -shm sidecars alongside the database. They are
+# transient state, the -wal runs to megabytes, and an earlier commit shipped
+# both by accident because this pattern only covered the plain file.
+data/emission_monitor.db*
 *.log
 
 # The Random Forest serialises to ~1 GB at the configured depth and nothing

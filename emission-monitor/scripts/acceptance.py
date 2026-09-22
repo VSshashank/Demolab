@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import re
 import json
 import sys
 import time
@@ -127,14 +128,26 @@ def main(argv=None) -> int:
     # is a no-op that will correctly never fire, and reporting that as a system
     # failure would be a bug in the test. Fastest vehicles get the kinematic
     # scenarios; the rest are assigned round robin.
-    fleet = sorted(fleet, key=lambda v: -v.get("speed_kmh", 0.0))
     needs_motion = {"HARSH_BRAKE", "HARSH_ACCEL"}
-    pool = [v["vehicle_id"] for v in fleet]
     assignment, taken = {}, set()
-    for scenario in sorted(order, key=lambda s: s not in needs_motion):
-        pick = next((v for v in pool if v not in taken), pool[len(taken) % len(pool)])
-        assignment[scenario] = pick
+
+    def claim(vehicle_list):
+        pick = next((v["vehicle_id"] for v in vehicle_list if v["vehicle_id"] not in taken), None)
+        if pick is None:
+            pick = vehicle_list[len(taken) % len(vehicle_list)]["vehicle_id"]
         taken.add(pick)
+        return pick
+
+    # The spike detector's baseline is built from MOVING samples only, so give
+    # it the most highway-like vehicle. Pointing it at a stop-go city round
+    # means waiting for the idle fraction as well as for the window.
+    if "EMISSION_SPIKE" in order:
+        highway = sorted(fleet, key=lambda v: v.get("stop_go_ratio_60s", 1.0))
+        assignment["EMISSION_SPIKE"] = claim(highway)
+    fastest = sorted(fleet, key=lambda v: -v.get("speed_kmh", 0.0))
+    for scenario in sorted(order, key=lambda s: s not in needs_motion):
+        if scenario not in assignment:
+            assignment[scenario] = claim(fastest)
 
     seen_before = {a["id"] for a in c.get("/api/alerts?limit=200")["alerts"]}
     injected = {}
@@ -144,7 +157,11 @@ def main(argv=None) -> int:
             c.post("/api/scenario", {"vehicle_id": vehicle, "scenario": scenario})
             injected[scenario] = (vehicle, time.time())
             dwell = SCENARIO_DEFAULTS[scenario]["rule_dwell_s"]
-            print(f"  {DIM}injected {scenario:<17} -> {vehicle}   rule dwell {dwell:>3} s{RESET}")
+            snap = next((v for v in fleet if v["vehicle_id"] == vehicle), {})
+            extra = (f", stop-go {snap.get('stop_go_ratio_60s', 0):.0%}"
+                     if scenario == "EMISSION_SPIKE" else
+                     f", at {snap.get('speed_kmh', 0):.0f} km/h" if scenario in needs_motion else "")
+            print(f"  {DIM}injected {scenario:<17} -> {vehicle}   rule dwell {dwell:>3} s{extra}{RESET}")
         except urllib.error.HTTPError as exc:
             print(f"  {FAIL}  {scenario:<17} rejected: {exc.read().decode()[:80]}")
             failures += 1
@@ -236,6 +253,58 @@ def main(argv=None) -> int:
         print(f"  {DIM}worked example: {sample['transport_operation_id']}  "
               f"{wtw:.4f} kg x 1000 / {tkm:.3f} t.km = {wtw * 1000 / tkm:.3f}, "
               f"row says {sample['ghg_intensity_g_per_tkm']}{RESET}")
+
+    # -------------------------------------------- checkpoint 8: shipped page
+    #
+    # This exists because the dashboard once shipped with every asset 404ing.
+    # index.html referenced its stylesheet, scripts, fonts and icon sprite
+    # relatively, but the page is served from "/" while the files are mounted
+    # at "/static". The API was entirely healthy; the page rendered as unstyled
+    # Times New Roman with no map and no charts. Nothing in an API-level test
+    # could see it, so the check walks the served HTML itself.
+    print(f"\n{BOLD}[8] Shipped page{RESET}")
+    html = c.get_text("/")
+    refs = sorted(set(re.findall(r'(?:src|href)="(/static/[^"#]+)', html)))
+    broken = []
+    for ref in refs:
+        try:
+            with urllib.request.urlopen(args.base + ref, timeout=10) as r:
+                if r.status != 200:
+                    broken.append((ref, r.status))
+        except urllib.error.HTTPError as exc:
+            broken.append((ref, exc.code))
+    failures += len(broken)
+    for ref, code in broken:
+        print(f"  {FAIL} {code} {ref}")
+    print(f"  {PASS if not broken else FAIL}  every referenced asset resolves "
+          f"({len(refs) - len(broken)}/{len(refs)})")
+
+    # The offline requirement: no script or stylesheet may point off-box.
+    remote = re.findall(r'(?:src|href)="(https?://[^"]+)"', html)
+    failures += len(remote)
+    print(f"  {PASS if not remote else FAIL}  no remote script or stylesheet in the shipped page"
+          + (f" (found {remote})" if remote else ""))
+
+    # Fonts and the tile fallback are referenced from CSS, not HTML.
+    css = c.get_text("/static/styles.css")
+    css_refs = sorted({u for u in re.findall(r'url\("([^"]+)"\)', css)
+                       if not u.startswith("data:")})
+    css_broken = []
+    for ref in css_refs:
+        try:
+            with urllib.request.urlopen(f"{args.base}/static/{ref}", timeout=10) as r:
+                if r.status != 200:
+                    css_broken.append(ref)
+        except urllib.error.HTTPError:
+            css_broken.append(ref)
+    failures += len(css_broken)
+    print(f"  {PASS if not css_broken else FAIL}  every stylesheet url resolves "
+          f"({len(css_refs) - len(css_broken)}/{len(css_refs)}): "
+          f"{', '.join(r.rsplit('/', 1)[-1] for r in css_refs)}")
+
+    has_fallback = ".tile-fallback" in css
+    failures += 0 if has_fallback else 1
+    print(f"  {PASS if has_fallback else FAIL}  grey graticule fallback present for tile failure")
 
     # ------------------------------------------------------- headline numbers
     h = c.get("/api/health")
